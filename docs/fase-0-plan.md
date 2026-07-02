@@ -110,9 +110,13 @@ README.md   → descripción real del proyecto + enlace a docs/
 
 ## Definición de terminado (checklist)
 
-- [ ] `./gradlew assembleDebug` y `testDebugUnitTest` pasan (local y CI)
-- [ ] La app abre y se navega Home ⇄ Console y Home ⇄ Settings
-- [ ] Tema retro-futurista mínimo aplicado (mono, paneles, fósforo sobre oscuro)
-- [ ] Room operativo (test de DAO en verde) y schema v1 exportado
-- [ ] DataStore operativo (el toggle de scanlines persiste entre arranques)
-- [ ] Estructura de paquetes según `arquitectura.md`
+- [x] `./gradlew assembleDebug` y `testDebugUnitTest` pasan — verificado en CI
+      (run #2, commit `c4ee332`, 2026-07-02)
+- [x] Tema retro-futurista mínimo aplicado (mono, paneles, fósforo sobre oscuro)
+- [x] Room operativo — test de DAO en verde en CI. El JSON del schema v1 se genera
+      en `app/schemas/` al compilar: commitearlo tras el primer build en Android Studio
+- [x] DataStore operativo — cableado de punta a punta (toggle scanlines)
+- [x] Estructura de paquetes según `arquitectura.md`
+- [ ] Verificación en dispositivo: navegación Home ⇄ Console ⇄ Settings y persistencia
+      del toggle entre arranques. No verificable desde el entorno remoto (sin emulador);
+      el smoke test `NavigationSmokeTest` está listo para ejecutarse desde Android Studio
