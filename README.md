@@ -9,7 +9,17 @@ de consola retro-futurista. Local-first, IA intercambiable (BYOK), sin tono de c
 
 ## Estado
 
-**Fase 0 — Base del proyecto**: plan técnico entregado, pendiente de implementación.
+**Fase 0 — Base del proyecto**: implementada. Esqueleto Compose con navegación
+(Home / Console / Settings), tema retro-futurista, Room v1 y DataStore operativos.
+
+## Compilar
+
+```bash
+./gradlew assembleDebug testDebugUnitTest
+```
+
+CI en GitHub Actions ejecuta lo mismo en cada push. Nota: desde el entorno de sesiones
+remotas no se puede compilar localmente (ver `docs/decisiones.md` D-002).
 
 ## Documentación
 
@@ -17,6 +27,7 @@ de consola retro-futurista. Local-first, IA intercambiable (BYOK), sin tono de c
   técnicas, navegación, tema visual, dependencias.
 - [`docs/fase-0-plan.md`](docs/fase-0-plan.md) — plan de implementación de la Fase 0 y
   definición de terminado.
+- [`docs/decisiones.md`](docs/decisiones.md) — registro de decisiones de producto y entorno.
 
 ## Stack
 
