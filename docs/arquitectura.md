@@ -290,7 +290,7 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | Fase | Entregable | Estado |
 |---|---|---|
 | 0 | Esqueleto: Compose, navegación, tema, Room, DataStore, 3 pantallas | **Implementada, CI verde** → [`fase-0-plan.md`](fase-0-plan.md) |
-| 1 | Captura de voz + transcripción + historial | — |
+| 1 | Captura de voz + transcripción + historial | **Implementada, CI verde** → [`fase-1-plan.md`](fase-1-plan.md) |
 | 2 | `AIProvider` + `MockAIProvider` + confirmación de intención | — |
 | 3 | Proveedor IA real (BYOK), JSON estricto validado, cola offline | — |
 | 4 | Recordatorios + notificaciones estilo operador | — |

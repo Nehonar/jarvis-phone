@@ -83,9 +83,13 @@ para la memoria del asistente de la Fase 10; el historial de notas vive en
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests de la máquina de estados con STT falso: camino feliz guarda nota,
-      error no guarda, resultado vacío no guarda, no disponible ⇒ error sin reintento
-- [ ] Pulsar `[ VOICE ]`, hablar y ver transcripción guardada (dispositivo)
-- [ ] Historial muestra las notas y permite borrar (dispositivo)
-- [ ] Si el reconocimiento falla, el error es claro y se puede reintentar (dispositivo)
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #4, commit `c32a843`,
+      2026-07-02)
+- [x] Tests de la máquina de estados con STT falso: camino feliz guarda nota,
+      error no guarda, resultado vacío no guarda, no disponible ⇒ error sin reintento,
+      descarte borra, permiso denegado ⇒ error con reintento
+- [ ] Pulsar `[ VOICE ]`, hablar y ver transcripción guardada — **pendiente de prueba
+      en dispositivo** (no verificable desde el entorno remoto)
+- [ ] Historial muestra las notas y permite borrar — pendiente de prueba en dispositivo
+- [ ] Si el reconocimiento falla, el error es claro y se puede reintentar — pendiente
+      de prueba en dispositivo
