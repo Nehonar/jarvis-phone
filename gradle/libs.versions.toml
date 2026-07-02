@@ -5,7 +5,8 @@
 agp = "8.13.0"
 kotlin = "2.2.21"
 ksp = "2.2.21-2.0.5"
-hilt = "2.60"
+# Hilt 2.59+ exige AGP 9.x; 2.58 es la última compatible con AGP 8.x
+hilt = "2.58"
 hiltNavigationCompose = "1.2.0"
 composeBom = "2025.09.00"
 coreKtx = "1.16.0"
