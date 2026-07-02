@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Visibilidad de paquetes (Android 11+): sin esto el servicio de
+         reconocimiento de voz aparece como no disponible. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".OperatorApplication"
         android:allowBackup="true"

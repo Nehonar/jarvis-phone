@@ -35,4 +35,16 @@ class NavigationSmokeTest {
         composeRule.onNodeWithText("[ CONFIG ]").performClick()
         composeRule.onNodeWithText("OPERATOR // CONFIG").assertIsDisplayed()
     }
+
+    @Test
+    fun navegaACaptura() {
+        composeRule.onNodeWithText("[ VOICE ]").performClick()
+        composeRule.onNodeWithText("OPERATOR // CAPTURE").assertIsDisplayed()
+    }
+
+    @Test
+    fun navegaAlHistorial() {
+        composeRule.onNodeWithText("[ LOG ]").performClick()
+        composeRule.onNodeWithText("OPERATOR // LOG").assertIsDisplayed()
+    }
 }

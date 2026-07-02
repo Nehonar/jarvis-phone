@@ -26,6 +26,8 @@ import com.nehonar.operator.core.design.theme.OperatorColors
 
 @Composable
 fun HomeScreen(
+    onOpenCapture: () -> Unit,
+    onOpenHistory: () -> Unit,
     onOpenConsole: () -> Unit,
     onOpenSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -59,7 +61,7 @@ fun HomeScreen(
             Spacer(Modifier.height(6.dp))
             StatusLine("LOCAL NOTES", state.noteCount.toString())
             Spacer(Modifier.height(6.dp))
-            StatusLine("VOICE MODULE", "OFFLINE // PHASE 1", valueColor = OperatorColors.Warning)
+            StatusLine("VOICE MODULE", "ONLINE", valueColor = OperatorColors.Phosphor)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -72,17 +74,30 @@ fun HomeScreen(
         }
 
         Spacer(Modifier.weight(1f))
+        OperatorButton(
+            text = "VOICE",
+            onClick = onOpenCapture,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OperatorButton(
+                text = "LOG",
+                onClick = onOpenHistory,
+                modifier = Modifier.weight(1f),
+                accent = OperatorColors.Cyan,
+            )
             OperatorButton(
                 text = "CONSOLE",
                 onClick = onOpenConsole,
                 modifier = Modifier.weight(1f),
+                accent = OperatorColors.Cyan,
             )
             OperatorButton(
                 text = "CONFIG",
                 onClick = onOpenSettings,
                 modifier = Modifier.weight(1f),
-                accent = OperatorColors.Cyan,
+                accent = OperatorColors.TextDim,
             )
         }
     }

@@ -5,7 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.nehonar.operator.feature.capture.CaptureScreen
 import com.nehonar.operator.feature.console.ConsoleScreen
+import com.nehonar.operator.feature.history.HistoryScreen
 import com.nehonar.operator.feature.home.HomeScreen
 import com.nehonar.operator.feature.settings.SettingsScreen
 
@@ -19,9 +21,17 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
     ) {
         composable<HomeRoute> {
             HomeScreen(
+                onOpenCapture = { navController.navigate(CaptureRoute) },
+                onOpenHistory = { navController.navigate(HistoryRoute) },
                 onOpenConsole = { navController.navigate(ConsoleRoute) },
                 onOpenSettings = { navController.navigate(SettingsRoute) },
             )
+        }
+        composable<CaptureRoute> {
+            CaptureScreen(onBack = { navController.popBackStack() })
+        }
+        composable<HistoryRoute> {
+            HistoryScreen(onBack = { navController.popBackStack() })
         }
         composable<ConsoleRoute> {
             ConsoleScreen(onBack = { navController.popBackStack() })

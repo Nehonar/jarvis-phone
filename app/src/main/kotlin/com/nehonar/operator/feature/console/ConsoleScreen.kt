@@ -54,7 +54,7 @@ fun ConsoleScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(6.dp))
             StatusLine("LINK", "LOCAL")
             Spacer(Modifier.height(6.dp))
-            StatusLine("VOICE", "OFFLINE // PHASE 1", valueColor = OperatorColors.Warning)
+            StatusLine("VOICE", "READY", valueColor = OperatorColors.Phosphor)
         }
 
         Spacer(Modifier.height(12.dp))

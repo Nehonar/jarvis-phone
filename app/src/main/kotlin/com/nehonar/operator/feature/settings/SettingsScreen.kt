@@ -72,7 +72,7 @@ fun SettingsScreen(
         ConsolePanel(title = "SYSTEM", modifier = Modifier.fillMaxWidth()) {
             StatusLine("VERSION", BuildConfig.VERSION_NAME)
             Spacer(Modifier.height(6.dp))
-            StatusLine("PHASE", "0 // BASE")
+            StatusLine("PHASE", "1 // VOICE")
             Spacer(Modifier.height(6.dp))
             StatusLine("AI PROVIDER", "NONE // PHASE 2", valueColor = OperatorColors.TextDim)
         }

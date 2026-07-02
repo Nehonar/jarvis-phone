@@ -9,8 +9,9 @@ de consola retro-futurista. Local-first, IA intercambiable (BYOK), sin tono de c
 
 ## Estado
 
-**Fase 0 — Base del proyecto**: implementada. Esqueleto Compose con navegación
-(Home / Console / Settings), tema retro-futurista, Room v1 y DataStore operativos.
+**Fase 1 — Captura por voz**: implementada. Pulsa `[ VOICE ]`, habla y la transcripción
+queda guardada como nota local; historial con borrado en `[ LOG ]`. Sobre la base de la
+Fase 0 (Compose, navegación, tema retro-futurista, Room, DataStore).
 
 ## Compilar
 
