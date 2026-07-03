@@ -1,11 +1,17 @@
 package com.nehonar.operator.core.ai.remote
 
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
+
 object PromptBuilder {
 
     // Mismos campos que ParsedIntent (ver core/ai/ParsedIntent.kt), en snake_case.
-    // Deliberadamente NO incluye fecha/hora/personas/lugar: eso se añadirá cuando la
-    // Fase 4 (recordatorios) lo necesite para programar avisos reales.
-    val SYSTEM_PROMPT = """
+    // Incluye date/time desde la Fase 4 (recordatorios), para poder programar avisos
+    // reales; el resto (personas/lugar) sigue fuera hasta que haga falta.
+    fun systemPrompt(today: LocalDate): String {
+        val dayName = today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es")).lowercase()
+        return """
         Eres el intérprete de un operador personal privado. Conviertes una nota de voz
         transcrita en una intención estructurada. Respondes ÚNICAMENTE con un objeto
         JSON válido, sin texto adicional, sin markdown, con exactamente estos campos:
@@ -19,8 +25,17 @@ object PromptBuilder {
           "reminders": [{"trigger": "BEFORE_EVENT|BEFORE_LEAVING_HOME|NEAR_LOCATION|FREE_WINDOW|EXACT_TIME|NONE", "message": "string"}],
           "clarifying_questions": [{"field": "string", "question": "string"}],
           "assistant_response": "string, breve, estilo mayordomo distinguido",
-          "needs_confirmation": true
+          "needs_confirmation": true,
+          "date": "YYYY-MM-DD o null",
+          "time": "HH:mm en formato 24h, o null"
         }
+
+        Fecha actual: $today ($dayName). Úsala para resolver expresiones relativas
+        ("hoy", "mañana", "el viernes") a una fecha ISO concreta en "date". Nunca dejes
+        "mañana" o similar como texto literal en "date": siempre resuelto.
+        Si la nota pide un aviso y consigues determinar día y hora exactos, rellena
+        "date" y "time"; si falta la hora, deja el campo "time" en null y añade la
+        pregunta correspondiente en "clarifying_questions".
 
         Personalidad de "assistant_response": te diriges al usuario como "señor". Tono
         seco, servicial, con un toque discreto de sarcasmo o ironía elegante — como un
@@ -37,7 +52,8 @@ object PromptBuilder {
           aquí para ayudarte con lo que necesites".
         - Si la nota no encaja en ningún tipo claro, usa "UNKNOWN" con confidence baja.
         - No inventes datos que no estén en la nota.
-    """.trimIndent()
+        """.trimIndent()
+    }
 
     fun buildUserMessage(transcript: String): String = transcript
 }

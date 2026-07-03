@@ -2,6 +2,7 @@ package com.nehonar.operator.core.ai.remote
 
 import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
+import com.nehonar.operator.core.common.TimeProvider
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,6 +21,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class RemoteAIProvider(
     private val config: RemoteAIProviderConfig,
     private val httpClient: OkHttpClient,
+    private val timeProvider: TimeProvider,
 ) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult = withContext(Dispatchers.IO) {
@@ -32,7 +34,7 @@ class RemoteAIProvider(
             ChatCompletionRequest(
                 model = config.model,
                 messages = listOf(
-                    ChatMessage(role = "system", content = PromptBuilder.SYSTEM_PROMPT),
+                    ChatMessage(role = "system", content = PromptBuilder.systemPrompt(timeProvider.today())),
                     ChatMessage(role = "user", content = PromptBuilder.buildUserMessage(transcript)),
                 ),
             ),

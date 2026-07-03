@@ -154,3 +154,25 @@ pidiendo datos; agotadas las rondas, se guarda igualmente con lo que haya (Revie
 muestra el panel de "pregunta pendiente" para ese caso). La nota se guarda en Room en
 cada ronda (estado `TRANSCRIBED`), así que cancelar a mitad de conversación no pierde
 nada: queda en el historial con "REINTENTAR IA" disponible.
+
+## D-011 · Recordatorios reales: alarma exacta con fallback, sin test de dispositivo en CI
+
+**Fecha:** 2026-07-03 · **Tipo:** técnica
+
+Fase 4 programa avisos reales con `AlarmManager` (`AlarmManagerReminderScheduler`). Dos
+límites del entorno de CI/sandbox, documentados para no bloquear el resto de la fase:
+
+- **Alarma exacta condicional:** en Android 12+ (API 31) hace falta el permiso especial
+  `SCHEDULE_EXACT_ALARM` (sin diálogo runtime estándar). Si `canScheduleExactAlarms()`
+  es `false`, se usa `setAndAllowWhileIdle` (aproximado) en vez de bloquear la función;
+  ver riesgo 1 de `docs/fase-4-plan.md`.
+- **`BootCompletedReceiver`, `ReminderNotifier` y el disparo real de la notificación** no
+  son verificables con Robolectric del mismo modo que la lógica pura (no hay reinicio de
+  dispositivo real ni notificación de sistema real en la JVM de test); se separó la
+  lógica de cálculo del instante del recordatorio (testeada en `ReviewViewModelTest` y
+  `RemindersViewModelTest`) de la programación/entrega real (verificación en
+  dispositivo, ver checklist de `docs/fase-4-plan.md`).
+
+Además, `MIGRATION_2_3` (añade `date`/`time` a `parsed_intents` y crea `reminders`) sigue
+el mismo patrón de base de datos "sombra" que D-006 (`OperatorDatabaseV2ForTest`,
+reproduce el esquema v2 sin las columnas nuevas).

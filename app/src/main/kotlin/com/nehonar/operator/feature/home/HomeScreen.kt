@@ -30,6 +30,7 @@ fun HomeScreen(
     onOpenHistory: () -> Unit,
     onOpenConsole: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenReminders: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -78,6 +79,13 @@ fun HomeScreen(
             text = "VOICE",
             onClick = onOpenCapture,
             modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        OperatorButton(
+            text = "REMINDERS",
+            onClick = onOpenReminders,
+            modifier = Modifier.fillMaxWidth(),
+            accent = OperatorColors.Cyan,
         )
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

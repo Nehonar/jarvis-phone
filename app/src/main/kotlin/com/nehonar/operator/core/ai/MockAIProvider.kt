@@ -1,5 +1,7 @@
 package com.nehonar.operator.core.ai
 
+import com.nehonar.operator.core.common.TimeProvider
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -7,7 +9,9 @@ import javax.inject.Inject
  * Sirve de contrato estable para el resto de la app hasta que la Fase 3
  * conecte un proveedor real detrás de la misma interfaz [AIProvider].
  */
-class MockAIProvider @Inject constructor() : AIProvider {
+class MockAIProvider @Inject constructor(
+    private val timeProvider: TimeProvider,
+) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult {
         val text = transcript.trim()
@@ -23,12 +27,13 @@ class MockAIProvider @Inject constructor() : AIProvider {
             callTarget?.let { add(ActionItem(ActionType.CALL, it, Priority.MEDIUM)) }
         }
 
-        val hasTime = TIME_REGEX.containsMatchIn(lower)
+        val resolvedDate = extractDate(lower, timeProvider.today())
+        val resolvedTime = extractTime(lower)
         val hasDepartureTime = DEPARTURE_REGEX.containsMatchIn(lower)
 
         val intentType = classify(lower)
         val clarifyingQuestions = buildList {
-            if (intentType == IntentType.REMINDER && !hasTime) {
+            if (intentType == IntentType.REMINDER && resolvedTime == null) {
                 add(ClarifyingQuestion("time", "¿A qué hora?"))
             }
             if (intentType == IntentType.PREPARE_EVENT && !hasDepartureTime) {
@@ -53,6 +58,9 @@ class MockAIProvider @Inject constructor() : AIProvider {
                     ),
                 )
             }
+            if (intentType == IntentType.REMINDER && resolvedTime != null) {
+                add(ReminderDraft(trigger = ReminderTrigger.EXACT_TIME, message = text))
+            }
         }
 
         return AIParseResult.Success(
@@ -66,6 +74,8 @@ class MockAIProvider @Inject constructor() : AIProvider {
                 clarifyingQuestions = clarifyingQuestions,
                 assistantResponse = buildAssistantResponse(intentType, actions, clarifyingQuestions),
                 needsConfirmation = true,
+                date = resolvedDate,
+                time = resolvedTime,
             ),
         )
     }
@@ -107,6 +117,33 @@ class MockAIProvider @Inject constructor() : AIProvider {
         return rest.takeWhile { it.isLetter() }.takeIf { it.isNotEmpty() }
     }
 
+    /** Solo entiende "hoy"/"mañana"; no resuelve días de la semana ni fechas explícitas. */
+    private fun extractDate(lower: String, today: LocalDate): String? = when {
+        wordBoundaryRegex("mañana").containsMatchIn(lower) -> today.plusDays(1).toString()
+        wordBoundaryRegex("hoy").containsMatchIn(lower) -> today.toString()
+        else -> null
+    }
+
+    /**
+     * Solo entiende horas en dígitos ("a las 8", "a las 14:00", "8:30"); no resuelve
+     * números escritos en palabras ("las dos") — limitación aceptada del mock (ver
+     * riesgo 3 en docs/fase-4-plan.md). Reconoce "de la tarde/mediodía/noche" para
+     * pasar a formato 24h cuando la hora está en el rango 1-11.
+     */
+    private fun extractTime(lower: String): String? {
+        val match = TIME_REGEX.find(lower) ?: return null
+        val hourStr = match.groupValues[1].ifEmpty { match.groupValues[3] }
+        val minuteStr = match.groupValues[2].ifEmpty { match.groupValues[4] }
+        var hour = hourStr.toIntOrNull() ?: return null
+        val minute = minuteStr.toIntOrNull() ?: 0
+        if (hour !in 0..23 || minute !in 0..59) return null
+        val tail = lower.substring((match.range.last + 1).coerceAtMost(lower.length)).take(20)
+        if (hour in 1..11 && PM_MARKERS.any { tail.contains(it) }) {
+            hour += 12
+        }
+        return "%02d:%02d".format(hour, minute)
+    }
+
     // Tono: mayordomo distinguido, seco, servicial y con una pizca de sarcasmo.
     // Se dirige al usuario como "señor". Nada de personajes protegidos: es un estilo
     // genérico, no una imitación de ninguna voz o actor concreto (ver D-009).
@@ -137,16 +174,17 @@ class MockAIProvider @Inject constructor() : AIProvider {
         val BUY_TRIGGERS = listOf("comprar")
         val CARRY_TRIGGERS = listOf("llevar")
         val CALL_TRIGGERS = listOf("llamar a", "avisar a")
-        val REMINDER_TRIGGERS = listOf("recuérdame", "recuerdame")
+        val REMINDER_TRIGGERS = listOf("recuérdame", "recuerdame", "avísame", "avisame", "acuérdame", "acuerdame")
         val PREPARE_EVENT_TRIGGERS = listOf("oficina", "gimnasio", "viaje")
         val MOOD_TRIGGERS = listOf("cansado", "cansada", "sin energía", "sin energia", "baja energía", "baja energia")
+        val PM_MARKERS = listOf("mediodía", "mediodia", "tarde", "noche")
 
         val STOP_WORDS_REGEX = Regex(
             "\\b(y al |y luego |luego |mañana |también |tambien )\\b",
             RegexOption.IGNORE_CASE,
         )
-        // Detecta una hora explícita: "a las 9", "9:30", "9h"
-        val TIME_REGEX = Regex("""\ba las \d{1,2}\b|\b\d{1,2}[:h]\d{2}\b""")
+        // "a las 9", "a las 14:00", "9:30" — captura hora en (1)/(3) y minutos en (2)/(4).
+        val TIME_REGEX = Regex("""\ba las (\d{1,2})(?::(\d{2}))?\b|\b(\d{1,2}):(\d{2})\b""")
         // Detecta que ya se indicó la hora de salida: "salgo/salir/sales ... 8"
         val DEPARTURE_REGEX = Regex("""\bsal(go|ir|es)\b[^.]{0,20}\d{1,2}""")
     }

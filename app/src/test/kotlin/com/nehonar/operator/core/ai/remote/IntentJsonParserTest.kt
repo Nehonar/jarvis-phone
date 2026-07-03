@@ -109,4 +109,54 @@ class IntentJsonParserTest {
         assertTrue(intent.reminders.isEmpty())
         assertTrue(intent.clarifyingQuestions.isEmpty())
     }
+
+    @Test
+    fun `date y time validos se conservan`() {
+        val json = """
+            {"intent_type": "REMINDER", "assistant_response": "ok", "date": "2026-07-04", "time": "09:30"}
+        """.trimIndent()
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertEquals("2026-07-04", intent.date)
+        assertEquals("09:30", intent.time)
+    }
+
+    @Test
+    fun `date con formato invalido se descarta en vez de romper`() {
+        val json = """
+            {"intent_type": "REMINDER", "assistant_response": "ok", "date": "mañana", "time": "09:30"}
+        """.trimIndent()
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertNull(intent.date)
+        assertEquals("09:30", intent.time)
+    }
+
+    @Test
+    fun `time con formato invalido se descarta en vez de romper`() {
+        val json = """
+            {"intent_type": "REMINDER", "assistant_response": "ok", "date": "2026-07-04", "time": "a las nueve"}
+        """.trimIndent()
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertEquals("2026-07-04", intent.date)
+        assertNull(intent.time)
+    }
+
+    @Test
+    fun `date y time ausentes son null por defecto`() {
+        val json = """{"intent_type": "SHOPPING", "assistant_response": "ok"}"""
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertNull(intent.date)
+        assertNull(intent.time)
+    }
 }

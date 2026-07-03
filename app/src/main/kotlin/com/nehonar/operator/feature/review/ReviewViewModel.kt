@@ -6,10 +6,22 @@ import androidx.lifecycle.viewModelScope
 import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.common.TimeProvider
+import com.nehonar.operator.core.domain.model.Reminder
+import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
+import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import com.nehonar.operator.core.notifications.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
+import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +46,9 @@ class ReviewViewModel @Inject constructor(
     private val voiceNoteRepository: VoiceNoteRepository,
     private val parsedIntentRepository: ParsedIntentRepository,
     private val aiProvider: AIProvider,
+    private val reminderRepository: ReminderRepository,
+    private val reminderScheduler: ReminderScheduler,
+    private val timeProvider: TimeProvider,
 ) : ViewModel() {
 
     // Navigation type-safe expone cada campo de ReviewRoute como argumento plano
@@ -99,7 +114,35 @@ class ReviewViewModel @Inject constructor(
         if (current !is ReviewUiState.Content) return
         viewModelScope.launch {
             parsedIntentRepository.save(voiceNoteId, current.intent.copy(needsConfirmation = false))
+            scheduleReminderIfResolved(current.intent)
             _uiState.value = ReviewUiState.Done
+        }
+    }
+
+    private suspend fun scheduleReminderIfResolved(intent: ParsedIntent) {
+        val triggerAt = resolveTriggerInstant(intent) ?: return
+        if (!triggerAt.isAfter(timeProvider.now())) return
+        val message = intent.reminders.firstOrNull()?.message ?: intent.assistantResponse
+        val reminder = Reminder(
+            id = UUID.randomUUID().toString(),
+            voiceNoteId = voiceNoteId,
+            message = message,
+            triggerAt = triggerAt,
+            status = ReminderStatus.PENDING,
+        )
+        reminderRepository.save(reminder)
+        reminderScheduler.schedule(reminder)
+    }
+
+    private fun resolveTriggerInstant(intent: ParsedIntent): Instant? {
+        val date = intent.date ?: return null
+        val time = intent.time ?: return null
+        return try {
+            LocalDateTime.of(LocalDate.parse(date), LocalTime.parse(time))
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+        } catch (e: DateTimeParseException) {
+            null
         }
     }
 

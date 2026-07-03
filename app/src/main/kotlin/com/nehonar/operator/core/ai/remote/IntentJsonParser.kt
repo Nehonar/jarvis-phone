@@ -8,6 +8,9 @@ import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.ai.Priority
 import com.nehonar.operator.core.ai.ReminderDraft
 import com.nehonar.operator.core.ai.ReminderTrigger
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeParseException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
@@ -58,7 +61,22 @@ object IntentJsonParser {
         clarifyingQuestions = clarifying_questions.map { ClarifyingQuestion(it.field, it.question) },
         assistantResponse = assistant_response,
         needsConfirmation = needs_confirmation,
+        date = date?.let { validIsoDateOrNull(it) },
+        time = time?.let { validTimeOrNull(it) },
     )
+
+    /** La IA a veces no respeta el formato exacto: se descarta en vez de romper la app. */
+    private fun validIsoDateOrNull(value: String): String? = try {
+        LocalDate.parse(value).toString()
+    } catch (e: DateTimeParseException) {
+        null
+    }
+
+    private fun validTimeOrNull(value: String): String? = try {
+        LocalTime.parse(value).let { "%02d:%02d".format(it.hour, it.minute) }
+    } catch (e: DateTimeParseException) {
+        null
+    }
 
     private fun ActionJson.toDomain(): ActionItem = ActionItem(
         type = ActionType.entries.firstOrNull { it.name == type.uppercase() } ?: ActionType.OTHER,

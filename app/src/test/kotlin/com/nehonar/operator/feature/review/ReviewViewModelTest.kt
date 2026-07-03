@@ -8,6 +8,8 @@ import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.testing.FakeAIProvider
 import com.nehonar.operator.testing.FakeParsedIntentRepository
+import com.nehonar.operator.testing.FakeReminderRepository
+import com.nehonar.operator.testing.FakeReminderScheduler
 import com.nehonar.operator.testing.FakeVoiceNoteRepository
 import com.nehonar.operator.testing.FixedTimeProvider
 import com.nehonar.operator.testing.MainDispatcherRule
@@ -25,6 +27,9 @@ class ReviewViewModelTest {
 
     private val voiceNoteRepository = FakeVoiceNoteRepository()
     private val parsedIntentRepository = FakeParsedIntentRepository()
+    private val reminderRepository = FakeReminderRepository()
+    private val reminderScheduler = FakeReminderScheduler()
+    private val timeProvider = FixedTimeProvider()
 
     private suspend fun seedNote(id: String, transcript: String, intent: ParsedIntent) {
         voiceNoteRepository.save(
@@ -45,6 +50,9 @@ class ReviewViewModelTest {
             voiceNoteRepository = voiceNoteRepository,
             parsedIntentRepository = parsedIntentRepository,
             aiProvider = aiProvider,
+            reminderRepository = reminderRepository,
+            reminderScheduler = reminderScheduler,
+            timeProvider = timeProvider,
         )
 
     private fun sampleIntent() = ParsedIntent(
@@ -83,6 +91,52 @@ class ReviewViewModelTest {
 
         assertEquals(ReviewUiState.Done, vm.uiState.value)
         assertEquals(false, parsedIntentRepository.current.getValue("n1").needsConfirmation)
+    }
+
+    @Test
+    fun `aceptar con fecha y hora futuras crea y programa un recordatorio`() = runTest {
+        val intent = sampleIntent().copy(
+            intentType = IntentType.REMINDER,
+            date = "2030-01-01",
+            time = "09:00",
+        )
+        seedNote("n1", "recuerdame algo", intent)
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        assertEquals(1, reminderRepository.current.size)
+        val reminder = reminderRepository.current.values.single()
+        assertEquals("n1", reminder.voiceNoteId)
+        assertEquals(1, reminderScheduler.scheduled.size)
+        assertEquals(reminder.id, reminderScheduler.scheduled.single().id)
+    }
+
+    @Test
+    fun `aceptar con fecha y hora en el pasado no programa recordatorio`() = runTest {
+        val intent = sampleIntent().copy(
+            intentType = IntentType.REMINDER,
+            date = "2020-01-01",
+            time = "08:00",
+        )
+        seedNote("n1", "recuerdame algo", intent)
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        assertTrue(reminderRepository.current.isEmpty())
+        assertTrue(reminderScheduler.scheduled.isEmpty())
+    }
+
+    @Test
+    fun `aceptar sin fecha u hora resueltas no programa recordatorio`() = runTest {
+        seedNote("n1", "comprar fruta", sampleIntent())
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        assertTrue(reminderRepository.current.isEmpty())
+        assertTrue(reminderScheduler.scheduled.isEmpty())
     }
 
     @Test

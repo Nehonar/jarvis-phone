@@ -74,4 +74,8 @@ data class ParsedIntent(
     val clarifyingQuestions: List<ClarifyingQuestion> = emptyList(),
     val assistantResponse: String,
     val needsConfirmation: Boolean = true,
+    /** ISO "YYYY-MM-DD", ya resuelta (sin "mañana"/"hoy" literal). Null si no aplica. */
+    val date: String? = null,
+    /** "HH:mm" en 24h. Null si no aplica. */
+    val time: String? = null,
 )

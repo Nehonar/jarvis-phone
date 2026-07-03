@@ -2,6 +2,7 @@ package com.nehonar.operator.core.ai
 
 import com.nehonar.operator.core.ai.remote.RemoteAIProvider
 import com.nehonar.operator.core.ai.remote.RemoteAIProviderConfig
+import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.datastore.OperatorPreferences
 import com.nehonar.operator.core.security.ApiKeyStore
 import javax.inject.Inject
@@ -18,6 +19,7 @@ class ConfigurableAIProvider @Inject constructor(
     private val preferences: OperatorPreferences,
     private val apiKeyStore: ApiKeyStore,
     private val httpClient: OkHttpClient,
+    private val timeProvider: TimeProvider,
 ) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult {
@@ -40,6 +42,6 @@ class ConfigurableAIProvider @Inject constructor(
             model = model.ifBlank { providerType.defaultModel.orEmpty() },
             apiKey = apiKey,
         )
-        return RemoteAIProvider(config, httpClient).parseVoiceNote(transcript)
+        return RemoteAIProvider(config, httpClient, timeProvider).parseVoiceNote(transcript)
     }
 }

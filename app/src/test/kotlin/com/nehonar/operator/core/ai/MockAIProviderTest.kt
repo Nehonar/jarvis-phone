@@ -1,14 +1,17 @@
 package com.nehonar.operator.core.ai
 
+import com.nehonar.operator.testing.FixedTimeProvider
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Assert.fail
 import org.junit.Test
 
 class MockAIProviderTest {
 
-    private val provider = MockAIProvider()
+    // 2026-07-02T10:15:00Z -> today() = 2026-07-02 (jueves), mañana = 2026-07-03.
+    private val timeProvider = FixedTimeProvider()
+    private val provider = MockAIProvider(timeProvider)
 
     private suspend fun parse(transcript: String): ParsedIntent =
         when (val result = provider.parseVoiceNote(transcript)) {
@@ -47,21 +50,56 @@ class MockAIProviderTest {
     }
 
     @Test
-    fun `recuerdame sin hora genera pregunta de aclaracion`() = runTest {
+    fun `recuerdame sin hora genera pregunta de aclaracion y no resuelve time`() = runTest {
         val result = parse("recuérdame llamar al médico")
 
         assertEquals(IntentType.REMINDER, result.intentType)
         assertEquals(1, result.clarifyingQuestions.size)
         assertEquals("time", result.clarifyingQuestions.single().field)
         assertTrue(result.assistantResponse.startsWith("Aún me falta un dato, señor"))
+        assertNull(result.time)
     }
 
     @Test
-    fun `recuerdame con hora explicita no genera pregunta`() = runTest {
+    fun `recuerdame con hora explicita no genera pregunta y resuelve time`() = runTest {
         val result = parse("recuérdame llamar al médico a las 9")
 
         assertEquals(IntentType.REMINDER, result.intentType)
         assertTrue(result.clarifyingQuestions.isEmpty())
+        assertEquals("09:00", result.time)
+    }
+
+    @Test
+    fun `avisame mañana a las 9 resuelve fecha y hora`() = runTest {
+        val result = parse("avísame mañana a las 9 para llamar al médico")
+
+        assertEquals(IntentType.REMINDER, result.intentType)
+        assertEquals("2026-07-03", result.date)
+        assertEquals("09:00", result.time)
+        assertTrue(result.clarifyingQuestions.isEmpty())
+    }
+
+    @Test
+    fun `hoy a las 14 00 resuelve fecha de hoy y hora exacta`() = runTest {
+        val result = parse("recuérdame hoy a las 14:00 salir antes")
+
+        assertEquals("2026-07-02", result.date)
+        assertEquals("14:00", result.time)
+    }
+
+    @Test
+    fun `hora en formato de la tarde se convierte a 24h`() = runTest {
+        val result = parse("recuérdame hoy a las 2 de la tarde ir al médico")
+
+        assertEquals("14:00", result.time)
+    }
+
+    @Test
+    fun `sin mencion de dia la fecha queda sin resolver`() = runTest {
+        val result = parse("recuérdame a las 9 llamar al médico")
+
+        assertNull(result.date)
+        assertEquals("09:00", result.time)
     }
 
     @Test

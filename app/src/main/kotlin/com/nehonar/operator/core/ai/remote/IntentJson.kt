@@ -14,6 +14,10 @@ data class IntentJson(
     val clarifying_questions: List<ClarifyingQuestionJson> = emptyList(),
     val assistant_response: String,
     val needs_confirmation: Boolean = true,
+    /** ISO "YYYY-MM-DD", ya resuelta por la IA (nunca "mañana" literal). */
+    val date: String? = null,
+    /** "HH:mm" en 24h. */
+    val time: String? = null,
 )
 
 @Serializable

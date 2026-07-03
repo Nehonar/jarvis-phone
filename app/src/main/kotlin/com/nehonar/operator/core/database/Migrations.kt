@@ -25,3 +25,22 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         )
     }
 }
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `parsed_intents` ADD COLUMN `date` TEXT")
+        db.execSQL("ALTER TABLE `parsed_intents` ADD COLUMN `time` TEXT")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `reminders` (
+                `id` TEXT NOT NULL,
+                `voiceNoteId` TEXT NOT NULL,
+                `message` TEXT NOT NULL,
+                `triggerAtEpochMillis` INTEGER NOT NULL,
+                `status` TEXT NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent(),
+        )
+    }
+}

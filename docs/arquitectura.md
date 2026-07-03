@@ -129,7 +129,7 @@ para aislar sus dependencias.
 | Persistencia | Room (KSP) + DataStore Preferences | Room para entidades; DataStore para preferencias (proveedor IA activo, flags visuales). |
 | API keys (Fase 3) | Android Keystore + fichero cifrado propio. **No** `androidx.security-crypto` (deprecado) ni DataStore en claro | Requisito explícito de seguridad. |
 | STT (Fase 1) | `SpeechRecognizer` del sistema detrás de una interfaz `SpeechToText` propia | Cero coste y offline en muchos dispositivos; la interfaz permite cambiar a Whisper/otro después. |
-| Avisos (Fase 4) | `AlarmManager` (exacto, con permiso `SCHEDULE_EXACT_ALARM` cuando el usuario lo acepte) + WorkManager para lo diferible | Recordatorios a hora exacta no pueden depender de WorkManager (Doze). |
+| Avisos (Fase 4) | `AlarmManager` exacto (`SCHEDULE_EXACT_ALARM`) con fallback a inexacto si no hay permiso; sin WorkManager | Recordatorios a hora exacta no pueden depender de WorkManager (Doze); el fallback evita bloquear la función cuando el permiso especial no está concedido. |
 | Serialización | kotlinx.serialization | Contrato JSON estricto de la IA con validación y fallback a `UNKNOWN`. |
 | Tests | JUnit + kotlinx-coroutines-test (JVM); Room DAO y smoke de navegación instrumentados | Mínimos por fase, según definición de terminado. |
 | CI | GitHub Actions: `assembleDebug` + `testDebugUnitTest` en cada push | Garantiza la regla "el código siempre compila" sin depender de la máquina local. |
@@ -293,7 +293,7 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 1 | Captura de voz + transcripción + historial | **Implementada, CI verde** → [`fase-1-plan.md`](fase-1-plan.md) |
 | 2 | `AIProvider` + `MockAIProvider` + confirmación de intención | **Implementada, CI verde** → [`fase-2-plan.md`](fase-2-plan.md) |
 | 3 | Proveedor IA real (BYOK), JSON estricto validado, cola offline | **Implementada, CI verde** → [`fase-3-plan.md`](fase-3-plan.md) |
-| 4 | Recordatorios + notificaciones estilo operador | — |
+| 4 | Recordatorios + notificaciones estilo operador | **Implementada, CI verde** → [`fase-4-plan.md`](fase-4-plan.md) |
 | 5 | Today Ops (`DayContext` + feed de consola) | — |
 | 6 | Widget Glance 4x2 funcional | — |
 | 7 | Prep Engine (checklists contextuales) | — |

@@ -19,3 +19,6 @@ data object ConsoleRoute
 
 @Serializable
 data object SettingsRoute
+
+@Serializable
+data object RemindersRoute

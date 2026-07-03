@@ -24,6 +24,8 @@ data class ParsedIntentEntity(
     val assistantResponse: String,
     val needsConfirmation: Boolean,
     val createdAtEpochMillis: Long,
+    val date: String? = null,
+    val time: String? = null,
 )
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -38,6 +40,8 @@ fun ParsedIntentEntity.toDomain(): ParsedIntent = ParsedIntent(
     clarifyingQuestions = json.decodeFromString(clarifyingQuestionsJson),
     assistantResponse = assistantResponse,
     needsConfirmation = needsConfirmation,
+    date = date,
+    time = time,
 )
 
 fun ParsedIntent.toEntity(voiceNoteId: String, createdAt: Instant): ParsedIntentEntity =
@@ -53,4 +57,6 @@ fun ParsedIntent.toEntity(voiceNoteId: String, createdAt: Instant): ParsedIntent
         assistantResponse = assistantResponse,
         needsConfirmation = needsConfirmation,
         createdAtEpochMillis = createdAt.toEpochMilli(),
+        date = date,
+        time = time,
     )

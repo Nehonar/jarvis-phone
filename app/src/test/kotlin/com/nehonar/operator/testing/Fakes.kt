@@ -6,9 +6,13 @@ import com.nehonar.operator.core.ai.AIProviderType
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.common.TimeProvider
+import com.nehonar.operator.core.domain.model.Reminder
+import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
+import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import com.nehonar.operator.core.notifications.ReminderScheduler
 import com.nehonar.operator.core.security.ApiKeyStore
 import com.nehonar.operator.core.voice.SpeechToText
 import com.nehonar.operator.core.voice.SttEvent
@@ -116,6 +120,44 @@ class FakeAIProvider(
     override suspend fun parseVoiceNote(transcript: String): AIParseResult {
         lastTranscript = transcript
         return result(transcript)
+    }
+}
+
+class FakeReminderRepository : ReminderRepository {
+
+    private val reminders = MutableStateFlow<Map<String, Reminder>>(emptyMap())
+
+    val current: Map<String, Reminder> get() = reminders.value
+
+    override fun observePending(): Flow<List<Reminder>> = reminders.map { map ->
+        map.values.filter { it.status == ReminderStatus.PENDING }.sortedBy { it.triggerAt }
+    }
+
+    override suspend fun getById(id: String): Reminder? = reminders.value[id]
+
+    override suspend fun getAllPending(): List<Reminder> =
+        reminders.value.values.filter { it.status == ReminderStatus.PENDING }
+
+    override suspend fun save(reminder: Reminder) {
+        reminders.update { it + (reminder.id to reminder) }
+    }
+
+    override suspend fun delete(id: String) {
+        reminders.update { it - id }
+    }
+}
+
+class FakeReminderScheduler : ReminderScheduler {
+
+    val scheduled = mutableListOf<Reminder>()
+    val cancelled = mutableListOf<String>()
+
+    override fun schedule(reminder: Reminder) {
+        scheduled += reminder
+    }
+
+    override fun cancel(reminderId: String) {
+        cancelled += reminderId
     }
 }
 
