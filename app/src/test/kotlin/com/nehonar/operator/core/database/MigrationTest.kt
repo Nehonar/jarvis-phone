@@ -10,7 +10,9 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
 import androidx.test.core.app.ApplicationProvider
+import com.nehonar.operator.core.database.dao.ReminderDao
 import com.nehonar.operator.core.database.dao.VoiceNoteDao
+import com.nehonar.operator.core.database.entity.ChecklistItemEntity
 import com.nehonar.operator.core.database.entity.ParsedIntentEntity
 import com.nehonar.operator.core.database.entity.ReminderEntity
 import com.nehonar.operator.core.database.entity.VoiceNoteEntity
@@ -64,6 +66,17 @@ abstract class OperatorDatabaseV2ForTest : RoomDatabase() {
     abstract fun parsedIntentDao(): ParsedIntentDaoV2ForTest
 }
 
+/** Base "sombra" con el esquema v3 (las mismas entidades reales, antes de checklist_items). */
+@Database(
+    entities = [VoiceNoteEntity::class, ParsedIntentEntity::class, ReminderEntity::class],
+    version = 3,
+    exportSchema = false,
+)
+abstract class OperatorDatabaseV3ForTest : RoomDatabase() {
+    abstract fun voiceNoteDao(): VoiceNoteDao
+    abstract fun reminderDao(): ReminderDao
+}
+
 /**
  * Verifica las migraciones sin depender de los JSON de schema exportados
  * (ver docs/decisiones.md D-006): se construye un fichero real con el esquema
@@ -105,9 +118,9 @@ class MigrationTest {
         )
         v1Db.close()
 
-        // La base real ya va por v3: abrirla aplica la cadena completa 1→2→3.
+        // La base real ya va por v4: abrirla aplica la cadena completa de migraciones.
         val migratedDb = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .allowMainThreadQueries()
             .build()
 
@@ -170,7 +183,7 @@ class MigrationTest {
         v2Db.close()
 
         val v3Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .allowMainThreadQueries()
             .build()
 
@@ -193,5 +206,49 @@ class MigrationTest {
         assertEquals("ir al medico", reminders.single().message)
 
         v3Db.close()
+    }
+
+    @Test
+    fun `migracion 3 a 4 conserva los recordatorios y habilita checklist_items`() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        val v3Db = Room.databaseBuilder(context, OperatorDatabaseV3ForTest::class.java, dbFile.path)
+            .allowMainThreadQueries()
+            .build()
+        v3Db.reminderDao().upsert(
+            ReminderEntity(
+                id = "r1",
+                voiceNoteId = "n1",
+                message = "salir de casa",
+                triggerAtEpochMillis = 1_000L,
+                status = "PENDING",
+            ),
+        )
+        v3Db.close()
+
+        val v4Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .allowMainThreadQueries()
+            .build()
+
+        val reminders = v4Db.reminderDao().getAllByStatus("PENDING")
+        assertEquals(1, reminders.size)
+        assertEquals("salir de casa", reminders.single().message)
+
+        v4Db.checklistDao().upsert(
+            ChecklistItemEntity(
+                id = "c1",
+                voiceNoteId = "n1",
+                type = "CARRY",
+                label = "el portátil",
+                done = false,
+                createdAtEpochMillis = 2_000L,
+            ),
+        )
+        val items = v4Db.checklistDao().observeAll().first()
+        assertEquals(1, items.size)
+        assertEquals("el portátil", items.single().label)
+
+        v4Db.close()
     }
 }

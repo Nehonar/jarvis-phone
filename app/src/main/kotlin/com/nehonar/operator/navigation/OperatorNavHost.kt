@@ -10,6 +10,7 @@ import com.nehonar.operator.feature.capture.CaptureScreen
 import com.nehonar.operator.feature.console.ConsoleScreen
 import com.nehonar.operator.feature.history.HistoryScreen
 import com.nehonar.operator.feature.home.HomeScreen
+import com.nehonar.operator.feature.prep.PrepScreen
 import com.nehonar.operator.feature.reminders.RemindersScreen
 import com.nehonar.operator.feature.review.ReviewScreen
 import com.nehonar.operator.feature.settings.SettingsScreen
@@ -29,6 +30,7 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
                 onOpenConsole = { navController.navigate(ConsoleRoute) },
                 onOpenSettings = { navController.navigate(SettingsRoute) },
                 onOpenReminders = { navController.navigate(RemindersRoute) },
+                onOpenPrep = { navController.navigate(PrepRoute) },
             )
         }
         composable<CaptureRoute>(
@@ -65,6 +67,9 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
         }
         composable<RemindersRoute> {
             RemindersScreen(onBack = { navController.popBackStack() })
+        }
+        composable<PrepRoute> {
+            PrepScreen(onBack = { navController.popBackStack() })
         }
     }
 }

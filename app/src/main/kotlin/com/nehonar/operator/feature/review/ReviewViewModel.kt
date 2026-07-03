@@ -7,9 +7,11 @@ import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.common.TimeProvider
+import com.nehonar.operator.core.domain.model.ChecklistItem
 import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
+import com.nehonar.operator.core.domain.repository.ChecklistRepository
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
@@ -51,6 +53,7 @@ class ReviewViewModel @Inject constructor(
     private val reminderScheduler: ReminderScheduler,
     private val timeProvider: TimeProvider,
     private val widgetRefresher: WidgetRefresher,
+    private val checklistRepository: ChecklistRepository,
 ) : ViewModel() {
 
     // Navigation type-safe expone cada campo de ReviewRoute como argumento plano
@@ -117,7 +120,23 @@ class ReviewViewModel @Inject constructor(
         viewModelScope.launch {
             parsedIntentRepository.save(voiceNoteId, current.intent.copy(needsConfirmation = false))
             scheduleReminderIfResolved(current.intent)
+            saveChecklistItems(current.intent)
             _uiState.value = ReviewUiState.Done
+        }
+    }
+
+    private suspend fun saveChecklistItems(intent: ParsedIntent) {
+        intent.actions.forEach { action ->
+            checklistRepository.save(
+                ChecklistItem(
+                    id = UUID.randomUUID().toString(),
+                    voiceNoteId = voiceNoteId,
+                    type = action.type,
+                    label = action.label,
+                    done = false,
+                    createdAt = timeProvider.now(),
+                ),
+            )
         }
     }
 

@@ -181,3 +181,21 @@ límites del entorno de CI/sandbox, documentados para no bloquear el resto de la
 Además, `MIGRATION_2_3` (añade `date`/`time` a `parsed_intents` y crea `reminders`) sigue
 el mismo patrón de base de datos "sombra" que D-006 (`OperatorDatabaseV2ForTest`,
 reproduce el esquema v2 sin las columnas nuevas).
+
+## D-012 · Refresco del widget en scope de aplicación
+
+**Fecha:** 2026-07-03 · **Origen:** usuario (bug real) · **Tipo:** técnica
+
+El usuario detectó que el widget seguía mostrando un recordatorio ya resuelto.
+Causa probable: `WidgetRefresher.refresh()` era `suspend` y se lanzaba en el
+`viewModelScope`; si el usuario navegaba justo después de la acción (DONE y
+atrás), el scope se cancelaba antes de repintar el widget. Resolución:
+
+- `refresh()` deja de ser suspend: lanza el `updateAll` en un
+  `@ApplicationScope CoroutineScope` (vive lo que el proceso, no se cancela al
+  navegar), provisto en `CommonModule`.
+- Red de seguridad adicional: `MainActivity.onResume()` refresca el widget en
+  cada vuelta a la app, cubriendo cualquier refresco puntual perdido.
+- Bug relacionado corregido: borrar una nota en LOG dejaba sus recordatorios
+  huérfanos con la alarma viva (y visibles en el widget). Ahora el borrado es
+  en cascada: cancela la alarma, borra los recordatorios y refresca el widget.

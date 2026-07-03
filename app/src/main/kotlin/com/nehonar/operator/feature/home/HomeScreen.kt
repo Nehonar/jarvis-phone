@@ -32,6 +32,7 @@ fun HomeScreen(
     onOpenConsole: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenReminders: () -> Unit,
+    onOpenPrep: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -88,6 +89,12 @@ fun HomeScreen(
             StatusLine("REMINDERS", state.pendingReminders.toString())
             Spacer(Modifier.height(6.dp))
             StatusLine(
+                "OPEN ACTIONS",
+                state.openActions.toString(),
+                valueColor = if (state.openActions > 0) OperatorColors.Cyan else OperatorColors.TextPrimary,
+            )
+            Spacer(Modifier.height(6.dp))
+            StatusLine(
                 "AWAITING REVIEW",
                 state.awaitingReview.toString(),
                 valueColor = if (state.awaitingReview > 0) OperatorColors.Warning else OperatorColors.TextPrimary,
@@ -138,12 +145,20 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(8.dp))
-        OperatorButton(
-            text = "REMINDERS",
-            onClick = onOpenReminders,
-            modifier = Modifier.fillMaxWidth(),
-            accent = OperatorColors.Cyan,
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OperatorButton(
+                text = "REMINDERS",
+                onClick = onOpenReminders,
+                modifier = Modifier.weight(1f),
+                accent = OperatorColors.Cyan,
+            )
+            OperatorButton(
+                text = "PREP",
+                onClick = onOpenPrep,
+                modifier = Modifier.weight(1f),
+                accent = OperatorColors.Cyan,
+            )
+        }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OperatorButton(

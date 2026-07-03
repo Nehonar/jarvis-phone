@@ -6,9 +6,11 @@ import com.nehonar.operator.core.ai.AIProviderType
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.common.TimeProvider
+import com.nehonar.operator.core.domain.model.ChecklistItem
 import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNote
+import com.nehonar.operator.core.domain.repository.ChecklistRepository
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
@@ -141,6 +143,9 @@ class FakeReminderRepository : ReminderRepository {
     override suspend fun getAllPending(): List<Reminder> =
         reminders.value.values.filter { it.status == ReminderStatus.PENDING }
 
+    override suspend fun getAllForVoiceNote(voiceNoteId: String): List<Reminder> =
+        reminders.value.values.filter { it.voiceNoteId == voiceNoteId }
+
     override suspend fun save(reminder: Reminder) {
         reminders.update { it + (reminder.id to reminder) }
     }
@@ -167,12 +172,37 @@ class FakeReminderScheduler : ReminderScheduler {
     override fun canScheduleExact(): Boolean = exactAlarmsEnabled
 }
 
+class FakeChecklistRepository : ChecklistRepository {
+
+    private val items = MutableStateFlow<Map<String, ChecklistItem>>(emptyMap())
+
+    val current: Map<String, ChecklistItem> get() = items.value
+
+    override fun observeAll(): Flow<List<ChecklistItem>> = items.map { map ->
+        map.values.sortedWith(compareBy({ it.done }, { it.createdAt }))
+    }
+
+    override suspend fun getById(id: String): ChecklistItem? = items.value[id]
+
+    override suspend fun save(item: ChecklistItem) {
+        items.update { it + (item.id to item) }
+    }
+
+    override suspend fun delete(id: String) {
+        items.update { it - id }
+    }
+
+    override suspend fun deleteDone() {
+        items.update { map -> map.filterValues { !it.done } }
+    }
+}
+
 class FakeWidgetRefresher : WidgetRefresher {
 
     var refreshCount = 0
         private set
 
-    override suspend fun refresh() {
+    override fun refresh() {
         refreshCount++
     }
 }

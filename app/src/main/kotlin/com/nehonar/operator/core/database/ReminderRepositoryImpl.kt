@@ -22,6 +22,9 @@ class ReminderRepositoryImpl @Inject constructor(
     override suspend fun getAllPending(): List<Reminder> =
         dao.getAllByStatus(ReminderStatus.PENDING.name).map { it.toDomain() }
 
+    override suspend fun getAllForVoiceNote(voiceNoteId: String): List<Reminder> =
+        dao.getAllForVoiceNote(voiceNoteId).map { it.toDomain() }
+
     override suspend fun save(reminder: Reminder) {
         dao.upsert(reminder.toEntity())
     }

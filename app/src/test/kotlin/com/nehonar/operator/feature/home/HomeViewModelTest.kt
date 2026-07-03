@@ -1,11 +1,14 @@
 package com.nehonar.operator.feature.home
 
+import com.nehonar.operator.core.ai.ActionType
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.domain.model.ChecklistItem
 import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
+import com.nehonar.operator.testing.FakeChecklistRepository
 import com.nehonar.operator.testing.FakeParsedIntentRepository
 import com.nehonar.operator.testing.FakeReminderRepository
 import com.nehonar.operator.testing.FakeVoiceNoteRepository
@@ -34,12 +37,14 @@ class HomeViewModelTest {
     private val voiceNoteRepository = FakeVoiceNoteRepository()
     private val parsedIntentRepository = FakeParsedIntentRepository()
     private val reminderRepository = FakeReminderRepository()
+    private val checklistRepository = FakeChecklistRepository()
 
     private fun viewModel() = HomeViewModel(
         timeProvider = timeProvider,
         voiceNoteRepository = voiceNoteRepository,
         parsedIntentRepository = parsedIntentRepository,
         reminderRepository = reminderRepository,
+        checklistRepository = checklistRepository,
     )
 
     private fun TestScope.collectState(vm: HomeViewModel) {
@@ -86,6 +91,18 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `cuenta solo los items de checklist abiertos`() = runTest {
+        checklistRepository.save(checklistItem("c1", done = false))
+        checklistRepository.save(checklistItem("c2", done = false))
+        checklistRepository.save(checklistItem("c3", done = true))
+
+        val vm = viewModel()
+        collectState(vm)
+
+        assertEquals(2, vm.uiState.value.openActions)
+    }
+
+    @Test
     fun `el feed solo tiene notas de hoy, recientes primero, con tope de 4`() = runTest {
         voiceNoteRepository.save(note("ayer", "2026-07-01T10:00:00Z", "nota de ayer"))
         voiceNoteRepository.save(note("a", "2026-07-02T08:00:00Z", "primera"))
@@ -129,5 +146,14 @@ class HomeViewModelTest {
         summary = "",
         assistantResponse = "ok",
         needsConfirmation = needsConfirmation,
+    )
+
+    private fun checklistItem(id: String, done: Boolean) = ChecklistItem(
+        id = id,
+        voiceNoteId = "n1",
+        type = ActionType.CARRY,
+        label = "item $id",
+        done = done,
+        createdAt = Instant.parse("2026-07-02T09:00:00Z"),
     )
 }

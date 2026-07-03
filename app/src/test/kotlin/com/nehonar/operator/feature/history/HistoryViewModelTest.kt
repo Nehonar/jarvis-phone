@@ -3,10 +3,15 @@ package com.nehonar.operator.feature.history
 import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.domain.model.Reminder
+import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.testing.FakeAIProvider
 import com.nehonar.operator.testing.FakeParsedIntentRepository
+import com.nehonar.operator.testing.FakeReminderRepository
+import com.nehonar.operator.testing.FakeReminderScheduler
+import com.nehonar.operator.testing.FakeWidgetRefresher
 import com.nehonar.operator.testing.FakeVoiceNoteRepository
 import com.nehonar.operator.testing.MainDispatcherRule
 import java.time.Instant
@@ -34,7 +39,7 @@ class HistoryViewModelTest {
         voiceNoteRepository.save(note("b", "llamar a Marc", 2_000L))
         parsedIntentRepository.save("b", sampleIntent(IntentType.CALL_OR_MESSAGE))
 
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider())
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             vm.items.collect {}
         }
@@ -51,13 +56,41 @@ class HistoryViewModelTest {
     }
 
     @Test
+    fun `borrar una nota cancela y elimina sus recordatorios en cascada`() = runTest {
+        val voiceNoteRepository = FakeVoiceNoteRepository()
+        val parsedIntentRepository = FakeParsedIntentRepository()
+        val reminderRepository = FakeReminderRepository()
+        val reminderScheduler = FakeReminderScheduler()
+        val widgetRefresher = FakeWidgetRefresher()
+        voiceNoteRepository.save(note("a", "recuerdame el medico", 1_000L))
+        reminderRepository.save(
+            Reminder(
+                id = "r1",
+                voiceNoteId = "a",
+                message = "ir al medico",
+                triggerAt = Instant.ofEpochMilli(9_000L),
+                status = ReminderStatus.PENDING,
+            ),
+        )
+
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), reminderRepository, reminderScheduler, widgetRefresher)
+
+        vm.delete("a")
+
+        assertEquals(null, voiceNoteRepository.getById("a"))
+        assertTrue(reminderRepository.current.isEmpty())
+        assertEquals(listOf("r1"), reminderScheduler.cancelled)
+        assertEquals(1, widgetRefresher.refreshCount)
+    }
+
+    @Test
     fun `solo las notas TRANSCRIBED permiten reintentar`() = runTest {
         val voiceNoteRepository = FakeVoiceNoteRepository()
         val parsedIntentRepository = FakeParsedIntentRepository()
         voiceNoteRepository.save(note("pending", "comprar fruta", 1_000L, VoiceNoteStatus.TRANSCRIBED))
         voiceNoteRepository.save(note("done", "llamar a Marc", 2_000L, VoiceNoteStatus.PARSED))
 
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider())
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             vm.items.collect {}
         }
@@ -75,7 +108,7 @@ class HistoryViewModelTest {
         val aiProvider = FakeAIProvider {
             AIParseResult.Success(sampleIntent(IntentType.SHOPPING))
         }
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, aiProvider)
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, aiProvider, FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher())
 
         vm.retryParsing("pending")
 
@@ -93,7 +126,7 @@ class HistoryViewModelTest {
         val parsedIntentRepository = FakeParsedIntentRepository()
         voiceNoteRepository.save(note("pending", "comprar fruta", 1_000L, VoiceNoteStatus.TRANSCRIBED))
         val aiProvider = FakeAIProvider { AIParseResult.Failure("Sin conexión") }
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, aiProvider)
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, aiProvider, FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher())
 
         vm.retryParsing("pending")
 

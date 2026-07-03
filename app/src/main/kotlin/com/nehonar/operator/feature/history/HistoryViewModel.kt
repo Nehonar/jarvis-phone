@@ -8,7 +8,10 @@ import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.common.formatOperatorDateTime
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
+import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import com.nehonar.operator.core.notifications.ReminderScheduler
+import com.nehonar.operator.core.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
@@ -35,6 +38,9 @@ class HistoryViewModel @Inject constructor(
     private val voiceNoteRepository: VoiceNoteRepository,
     private val parsedIntentRepository: ParsedIntentRepository,
     private val aiProvider: AIProvider,
+    private val reminderRepository: ReminderRepository,
+    private val reminderScheduler: ReminderScheduler,
+    private val widgetRefresher: WidgetRefresher,
 ) : ViewModel() {
 
     val items: StateFlow<List<HistoryItem>> = combine(
@@ -61,8 +67,15 @@ class HistoryViewModel @Inject constructor(
 
     fun delete(id: String) {
         viewModelScope.launch {
+            // Cascada: sin esto quedaban recordatorios huérfanos con la alarma viva
+            // (y el widget seguía mostrándolos).
+            reminderRepository.getAllForVoiceNote(id).forEach { reminder ->
+                reminderScheduler.cancel(reminder.id)
+                reminderRepository.delete(reminder.id)
+            }
             parsedIntentRepository.deleteByVoiceNoteId(id)
             voiceNoteRepository.delete(id)
+            widgetRefresher.refresh()
         }
     }
 

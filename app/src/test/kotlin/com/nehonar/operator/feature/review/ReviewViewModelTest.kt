@@ -2,11 +2,15 @@ package com.nehonar.operator.feature.review
 
 import androidx.lifecycle.SavedStateHandle
 import com.nehonar.operator.core.ai.AIParseResult
+import com.nehonar.operator.core.ai.ActionItem
+import com.nehonar.operator.core.ai.ActionType
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.ai.Priority
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.testing.FakeAIProvider
+import com.nehonar.operator.testing.FakeChecklistRepository
 import com.nehonar.operator.testing.FakeParsedIntentRepository
 import com.nehonar.operator.testing.FakeReminderRepository
 import com.nehonar.operator.testing.FakeReminderScheduler
@@ -32,6 +36,7 @@ class ReviewViewModelTest {
     private val reminderScheduler = FakeReminderScheduler()
     private val timeProvider = FixedTimeProvider()
     private val widgetRefresher = FakeWidgetRefresher()
+    private val checklistRepository = FakeChecklistRepository()
 
     private suspend fun seedNote(id: String, transcript: String, intent: ParsedIntent) {
         voiceNoteRepository.save(
@@ -56,6 +61,7 @@ class ReviewViewModelTest {
             reminderScheduler = reminderScheduler,
             timeProvider = timeProvider,
             widgetRefresher = widgetRefresher,
+            checklistRepository = checklistRepository,
         )
 
     private fun sampleIntent() = ParsedIntent(
@@ -114,6 +120,38 @@ class ReviewViewModelTest {
         assertEquals(1, reminderScheduler.scheduled.size)
         assertEquals(reminder.id, reminderScheduler.scheduled.single().id)
         assertEquals(1, widgetRefresher.refreshCount)
+    }
+
+    @Test
+    fun `aceptar persiste las acciones como items de checklist`() = runTest {
+        val intent = sampleIntent().copy(
+            intentType = IntentType.CARRY_ITEMS,
+            actions = listOf(
+                ActionItem(ActionType.CARRY, "el portátil", Priority.HIGH),
+                ActionItem(ActionType.BUY, "fruta", Priority.MEDIUM),
+            ),
+        )
+        seedNote("n1", "llevar el portátil y comprar fruta", intent)
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        val items = checklistRepository.current.values.sortedBy { it.label }
+        assertEquals(2, items.size)
+        assertEquals(listOf("el portátil", "fruta"), items.map { it.label })
+        assertEquals(listOf(ActionType.CARRY, ActionType.BUY), items.map { it.type })
+        assertTrue(items.none { it.done })
+        assertEquals("n1", items.first().voiceNoteId)
+    }
+
+    @Test
+    fun `aceptar sin acciones no crea items de checklist`() = runTest {
+        seedNote("n1", "comprar fruta", sampleIntent())
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        assertTrue(checklistRepository.current.isEmpty())
     }
 
     @Test

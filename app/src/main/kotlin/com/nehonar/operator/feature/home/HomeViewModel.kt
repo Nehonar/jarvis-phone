@@ -7,8 +7,10 @@ import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.common.formatOperatorDate
 import com.nehonar.operator.core.common.formatOperatorDateTime
 import com.nehonar.operator.core.common.formatOperatorTime
+import com.nehonar.operator.core.domain.model.ChecklistItem
 import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.VoiceNote
+import com.nehonar.operator.core.domain.repository.ChecklistRepository
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
@@ -37,6 +39,7 @@ data class HomeUiState(
     val nextReminder: DayReminder? = null,
     val pendingReminders: Int = 0,
     val awaitingReview: Int = 0,
+    val openActions: Int = 0,
     val feed: List<FeedItem> = emptyList(),
 )
 
@@ -48,6 +51,7 @@ class HomeViewModel @Inject constructor(
     voiceNoteRepository: VoiceNoteRepository,
     parsedIntentRepository: ParsedIntentRepository,
     reminderRepository: ReminderRepository,
+    checklistRepository: ChecklistRepository,
 ) : ViewModel() {
 
     private val dateLabel = formatOperatorDate(timeProvider.today())
@@ -56,8 +60,9 @@ class HomeViewModel @Inject constructor(
         voiceNoteRepository.observeAll(),
         parsedIntentRepository.observeAll(),
         reminderRepository.observePending(),
-    ) { notes, intents, reminders ->
-        buildState(notes, intents, reminders)
+        checklistRepository.observeAll(),
+    ) { notes, intents, reminders, checklist ->
+        buildState(notes, intents, reminders, checklist)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -68,6 +73,7 @@ class HomeViewModel @Inject constructor(
         notes: List<VoiceNote>,
         intents: Map<String, ParsedIntent>,
         reminders: List<Reminder>,
+        checklist: List<ChecklistItem>,
     ): HomeUiState {
         val zone = ZoneId.systemDefault()
         // observePending ya viene ordenado por instante ascendente.
@@ -95,6 +101,7 @@ class HomeViewModel @Inject constructor(
             nextReminder = next,
             pendingReminders = reminders.size,
             awaitingReview = intents.values.count { it.needsConfirmation },
+            openActions = checklist.count { !it.done },
             feed = feed,
         )
     }

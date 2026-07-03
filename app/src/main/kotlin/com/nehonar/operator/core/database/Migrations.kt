@@ -44,3 +44,21 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 }
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `checklist_items` (
+                `id` TEXT NOT NULL,
+                `voiceNoteId` TEXT NOT NULL,
+                `type` TEXT NOT NULL,
+                `label` TEXT NOT NULL,
+                `done` INTEGER NOT NULL,
+                `createdAtEpochMillis` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent(),
+        )
+    }
+}
