@@ -9,9 +9,11 @@ de consola retro-futurista. Local-first, IA intercambiable (BYOK), sin tono de c
 
 ## Estado
 
-**Fase 1 — Captura por voz**: implementada. Pulsa `[ VOICE ]`, habla y la transcripción
-queda guardada como nota local; historial con borrado en `[ LOG ]`. Sobre la base de la
-Fase 0 (Compose, navegación, tema retro-futurista, Room, DataStore).
+**Fase 2 — Interpretación con IA mock**: implementada. Cada nota capturada se
+interpreta automáticamente (recordatorio, compra, cosas que llevar, llamada...) con un
+proveedor simulado, sin red; pantalla de revisión para aceptar, editar o descartar.
+Sobre la base de las Fases 0 (Compose, navegación, tema, Room, DataStore) y 1
+(captura por voz, historial).
 
 ## Compilar
 

@@ -161,7 +161,8 @@ tiene intención asociada — nunca debería pasar salvo error).
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #6, commit `44ca176`,
+      2026-07-03)
 - [x] Tests de `MockAIProvider` para cada regla (incluidas las de `clarifyingQuestions`)
 - [x] Test de migración Room 1→2 (sin `MigrationTestHelper`; ver D-006)
 - [ ] Al capturar una nota, se parsea automáticamente y aparece la pantalla de revisión
