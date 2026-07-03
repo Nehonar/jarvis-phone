@@ -9,6 +9,7 @@ import com.nehonar.operator.core.voice.SttError
 import com.nehonar.operator.core.voice.SttEvent
 import com.nehonar.operator.testing.FakeAIProvider
 import com.nehonar.operator.testing.FakeParsedIntentRepository
+import com.nehonar.operator.testing.FakeSequentialSpeechToText
 import com.nehonar.operator.testing.FakeSpeechToText
 import com.nehonar.operator.testing.FakeVoiceNoteRepository
 import com.nehonar.operator.testing.FixedTimeProvider
@@ -122,9 +123,11 @@ class CaptureViewModelTest {
                 reminderMissingDepartureTime(transcript)
             }
         }
-        val speechToText = FakeSpeechToText.sequence(
-            listOf(SttEvent.Ready, SttEvent.FinalResult("mañana médico a las 8")),
-            listOf(SttEvent.Ready, SttEvent.FinalResult("quiero salir a las 7:50")),
+        val speechToText = FakeSequentialSpeechToText(
+            listOf(
+                listOf(SttEvent.Ready, SttEvent.FinalResult("mañana médico a las 8")),
+                listOf(SttEvent.Ready, SttEvent.FinalResult("quiero salir a las 7:50")),
+            ),
         )
         val vm = CaptureViewModel(
             speechToText = speechToText,
@@ -154,11 +157,13 @@ class CaptureViewModelTest {
     @Test
     fun `tras 3 rondas sin respuesta valida se guarda igualmente en vez de bucle infinito`() = runTest {
         val aiProvider = FakeAIProvider { transcript -> reminderMissingDepartureTime(transcript) }
-        val speechToText = FakeSpeechToText.sequence(
-            listOf(SttEvent.Ready, SttEvent.FinalResult("recuérdame algo")),
-            listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 1")),
-            listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 2")),
-            listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 3")),
+        val speechToText = FakeSequentialSpeechToText(
+            listOf(
+                listOf(SttEvent.Ready, SttEvent.FinalResult("recuérdame algo")),
+                listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 1")),
+                listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 2")),
+                listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 3")),
+            ),
         )
         val vm = CaptureViewModel(
             speechToText = speechToText,
