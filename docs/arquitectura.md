@@ -297,7 +297,7 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 5 | Today Ops (`DayContext` + feed de consola) | **Implementada** → [`fase-5-plan.md`](fase-5-plan.md) |
 | 6 | Widget Glance 4x2 funcional | **Implementada** → [`fase-6-plan.md`](fase-6-plan.md) |
 | 7 | Prep Engine (checklists contextuales) | **Implementada** → [`fase-7-plan.md`](fase-7-plan.md) |
-| 8 | Consola visual (nodos/partículas reactivos) | — |
+| 8 | Consola visual (nodos/partículas reactivos) | **Implementada** → [`fase-8-plan.md`](fase-8-plan.md) |
 | 9–14 | Calendario, memoria, salud, email RO, ubicación, backend | — |
 
 Regla de oro: **cada fase termina con una app usable y compilable.**
