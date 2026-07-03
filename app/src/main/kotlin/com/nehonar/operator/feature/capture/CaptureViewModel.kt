@@ -25,6 +25,7 @@ sealed interface CaptureUiState {
     data object Idle : CaptureUiState
     data class Listening(val partialText: String = "", val level: Float = 0f) : CaptureUiState
     data object Processing : CaptureUiState
+    data class AwaitingAnswer(val prompt: String) : CaptureUiState
     data class Parsed(val voiceNoteId: String) : CaptureUiState
     data class SavedPending(val voiceNoteId: String, val reason: String) : CaptureUiState
     data class Error(val message: String, val canRetry: Boolean = true) : CaptureUiState
@@ -44,7 +45,27 @@ class CaptureViewModel @Inject constructor(
 
     private var captureJob: Job? = null
 
+    // Estado de la conversación en curso (una nota puede tardar varias rondas de
+    // preguntas en completarse). Se reinicia en cada startCapture() nuevo.
+    private var noteId: String? = null
+    private var pendingTranscript: String? = null
+    private var roundsLeft: Int = MAX_CLARIFICATION_ROUNDS
+
+    /** Empieza una nota nueva desde cero. */
     fun startCapture() {
+        noteId = null
+        pendingTranscript = null
+        roundsLeft = MAX_CLARIFICATION_ROUNDS
+        beginListening()
+    }
+
+    /** Continúa la misma nota: escucha la respuesta a la pregunta pendiente. */
+    fun startAnsweringClarification() {
+        if (_uiState.value !is CaptureUiState.AwaitingAnswer) return
+        beginListening()
+    }
+
+    private fun beginListening() {
         if (captureJob?.isActive == true) return
         if (!speechToText.isAvailable()) {
             _uiState.value = CaptureUiState.Error(
@@ -62,6 +83,9 @@ class CaptureViewModel @Inject constructor(
     fun cancelCapture() {
         captureJob?.cancel()
         captureJob = null
+        noteId = null
+        pendingTranscript = null
+        roundsLeft = MAX_CLARIFICATION_ROUNDS
         _uiState.value = CaptureUiState.Idle
     }
 
@@ -114,30 +138,55 @@ class CaptureViewModel @Inject constructor(
     }
 
     private suspend fun onFinalResult(text: String) {
-        val transcript = text.trim()
-        if (transcript.isEmpty()) {
+        val heard = text.trim()
+        if (heard.isEmpty()) {
             _uiState.value = CaptureUiState.Error(message = SttError.NO_MATCH.toOperatorMessage())
             return
         }
         _uiState.value = CaptureUiState.Processing
+        val combined = pendingTranscript?.let { previous -> "$previous. $heard" } ?: heard
+        processTranscript(combined)
+    }
+
+    /**
+     * Guarda/actualiza la nota con la transcripción acumulada e interpreta.
+     * Si falta un dato y quedan rondas, pide la respuesta en la misma sesión en vez
+     * de cerrar la nota; si se agotan las rondas, sigue adelante con lo que haya
+     * (Review ya muestra el aviso de "pregunta pendiente" en ese caso).
+     */
+    private suspend fun processTranscript(transcript: String) {
+        val currentNoteId = noteId ?: UUID.randomUUID().toString().also { noteId = it }
         val note = VoiceNote(
-            id = UUID.randomUUID().toString(),
+            id = currentNoteId,
             audioUri = null,
             transcript = transcript,
             createdAt = timeProvider.now(),
             status = VoiceNoteStatus.TRANSCRIBED,
         )
         voiceNoteRepository.save(note)
+
         when (val result = aiProvider.parseVoiceNote(transcript)) {
             is AIParseResult.Success -> {
-                parsedIntentRepository.save(note.id, result.intent)
-                voiceNoteRepository.save(note.copy(status = VoiceNoteStatus.PARSED))
-                _uiState.value = CaptureUiState.Parsed(note.id)
+                val intent = result.intent
+                if (intent.clarifyingQuestions.isNotEmpty() && roundsLeft > 0) {
+                    pendingTranscript = transcript
+                    roundsLeft -= 1
+                    _uiState.value = CaptureUiState.AwaitingAnswer(prompt = intent.assistantResponse)
+                } else {
+                    parsedIntentRepository.save(currentNoteId, intent)
+                    voiceNoteRepository.save(note.copy(status = VoiceNoteStatus.PARSED))
+                    pendingTranscript = null
+                    _uiState.value = CaptureUiState.Parsed(currentNoteId)
+                }
             }
             is AIParseResult.Failure -> {
-                _uiState.value = CaptureUiState.SavedPending(note.id, result.reason)
+                _uiState.value = CaptureUiState.SavedPending(currentNoteId, result.reason)
             }
         }
+    }
+
+    private companion object {
+        const val MAX_CLARIFICATION_ROUNDS = 3
     }
 }
 

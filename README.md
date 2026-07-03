@@ -17,6 +17,12 @@ pierde: queda pendiente y se puede reintentar desde `[ LOG ]`. Sobre la base de 
 Fases 0 (Compose, navegación, tema, Room, DataStore), 1 (captura por voz, historial) y
 2 (interpretación de intenciones, revisión).
 
+**Extra sobre Fase 3**: si falta un dato (p. ej. la hora de salida), la app ya no
+cierra la nota — sigue escuchando en la misma conversación hasta tener lo necesario
+(tope de 3 rondas). El asistente responde con personalidad propia: seco, servicial,
+con un toque de sarcasmo, dirigiéndose a ti como "señor" (ver `docs/decisiones.md`
+D-009 y D-010).
+
 ## Compilar
 
 ```bash

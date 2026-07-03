@@ -53,7 +53,7 @@ class MockAIProviderTest {
         assertEquals(IntentType.REMINDER, result.intentType)
         assertEquals(1, result.clarifyingQuestions.size)
         assertEquals("time", result.clarifyingQuestions.single().field)
-        assertTrue(result.assistantResponse.startsWith("Falta dato"))
+        assertTrue(result.assistantResponse.startsWith("Aún me falta un dato, señor"))
     }
 
     @Test

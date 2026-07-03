@@ -1,6 +1,7 @@
 package com.nehonar.operator.feature.capture
 
 import com.nehonar.operator.core.ai.AIParseResult
+import com.nehonar.operator.core.ai.ClarifyingQuestion
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
@@ -80,6 +81,136 @@ class CaptureViewModelTest {
         val savedIntent = parsedIntentRepository.current.getValue(noteId)
         assertEquals(IntentType.SHOPPING, savedIntent.intentType)
     }
+
+    @Test
+    fun `pregunta de aclaracion pasa a AwaitingAnswer y guarda la nota parcial`() = runTest {
+        val aiProvider = FakeAIProvider { transcript -> reminderMissingDepartureTime(transcript) }
+        val vm = viewModel(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("mañana médico a las 8")),
+            aiProvider = aiProvider,
+        )
+
+        vm.startCapture()
+
+        val state = vm.uiState.value
+        assertTrue(state is CaptureUiState.AwaitingAnswer)
+        assertEquals(
+            "Aún me falta un dato, señor: ¿A qué hora sale de casa?",
+            (state as CaptureUiState.AwaitingAnswer).prompt,
+        )
+
+        val saved = voiceNoteRepository.current.single()
+        assertEquals("mañana médico a las 8", saved.transcript)
+        assertEquals(VoiceNoteStatus.TRANSCRIBED, saved.status)
+        assertEquals(0, parsedIntentRepository.current.size)
+    }
+
+    @Test
+    fun `responder la pregunta completa la conversacion en la misma nota`() = runTest {
+        val aiProvider = FakeAIProvider { transcript ->
+            if (transcript.contains("7:50")) {
+                AIParseResult.Success(
+                    ParsedIntent(
+                        intentType = IntentType.REMINDER,
+                        confidence = 0.8f,
+                        title = "REMINDER",
+                        summary = transcript,
+                        assistantResponse = "Recordatorio programado, señor.",
+                    ),
+                )
+            } else {
+                reminderMissingDepartureTime(transcript)
+            }
+        }
+        val speechToText = FakeSpeechToText.sequence(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("mañana médico a las 8")),
+            listOf(SttEvent.Ready, SttEvent.FinalResult("quiero salir a las 7:50")),
+        )
+        val vm = CaptureViewModel(
+            speechToText = speechToText,
+            voiceNoteRepository = voiceNoteRepository,
+            parsedIntentRepository = parsedIntentRepository,
+            aiProvider = aiProvider,
+            timeProvider = timeProvider,
+        )
+
+        vm.startCapture()
+        assertTrue(vm.uiState.value is CaptureUiState.AwaitingAnswer)
+
+        vm.startAnsweringClarification()
+
+        val state = vm.uiState.value
+        assertTrue(state is CaptureUiState.Parsed)
+        val noteId = (state as CaptureUiState.Parsed).voiceNoteId
+        val saved = voiceNoteRepository.current.single()
+        assertEquals(noteId, saved.id)
+        assertEquals("mañana médico a las 8. quiero salir a las 7:50", saved.transcript)
+        assertEquals(VoiceNoteStatus.PARSED, saved.status)
+        val savedIntent = parsedIntentRepository.current.getValue(noteId)
+        assertEquals(IntentType.REMINDER, savedIntent.intentType)
+        assertTrue(savedIntent.clarifyingQuestions.isEmpty())
+    }
+
+    @Test
+    fun `tras 3 rondas sin respuesta valida se guarda igualmente en vez de bucle infinito`() = runTest {
+        val aiProvider = FakeAIProvider { transcript -> reminderMissingDepartureTime(transcript) }
+        val speechToText = FakeSpeechToText.sequence(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("recuérdame algo")),
+            listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 1")),
+            listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 2")),
+            listOf(SttEvent.Ready, SttEvent.FinalResult("respuesta 3")),
+        )
+        val vm = CaptureViewModel(
+            speechToText = speechToText,
+            voiceNoteRepository = voiceNoteRepository,
+            parsedIntentRepository = parsedIntentRepository,
+            aiProvider = aiProvider,
+            timeProvider = timeProvider,
+        )
+
+        vm.startCapture()
+        assertTrue(vm.uiState.value is CaptureUiState.AwaitingAnswer)
+        vm.startAnsweringClarification()
+        assertTrue(vm.uiState.value is CaptureUiState.AwaitingAnswer)
+        vm.startAnsweringClarification()
+        assertTrue(vm.uiState.value is CaptureUiState.AwaitingAnswer)
+        vm.startAnsweringClarification()
+
+        val state = vm.uiState.value
+        assertTrue(state is CaptureUiState.Parsed)
+        val savedIntent = parsedIntentRepository.current.getValue((state as CaptureUiState.Parsed).voiceNoteId)
+        assertEquals(1, savedIntent.clarifyingQuestions.size)
+    }
+
+    @Test
+    fun `cancelar desde AwaitingAnswer vuelve a Idle sin borrar la nota parcial`() = runTest {
+        val aiProvider = FakeAIProvider { transcript -> reminderMissingDepartureTime(transcript) }
+        val vm = viewModel(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("recuérdame algo")),
+            aiProvider = aiProvider,
+        )
+
+        vm.startCapture()
+        assertTrue(vm.uiState.value is CaptureUiState.AwaitingAnswer)
+
+        vm.cancelCapture()
+
+        assertEquals(CaptureUiState.Idle, vm.uiState.value)
+        val saved = voiceNoteRepository.current.single()
+        assertEquals("recuérdame algo", saved.transcript)
+        assertEquals(VoiceNoteStatus.TRANSCRIBED, saved.status)
+    }
+
+    private fun reminderMissingDepartureTime(transcript: String) = AIParseResult.Success(
+        ParsedIntent(
+            intentType = IntentType.REMINDER,
+            confidence = 0.5f,
+            title = "REMINDER",
+            summary = transcript,
+            clarifyingQuestions = listOf(ClarifyingQuestion("departure_time", "¿A qué hora sale de casa?")),
+            assistantResponse = "Aún me falta un dato, señor: ¿A qué hora sale de casa?",
+        ),
+    )
 
     @Test
     fun `fallo de la IA guarda la nota como pendiente sin perderla`() = runTest {

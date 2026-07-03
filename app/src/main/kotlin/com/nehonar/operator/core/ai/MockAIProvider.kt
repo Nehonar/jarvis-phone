@@ -107,23 +107,27 @@ class MockAIProvider @Inject constructor() : AIProvider {
         return rest.takeWhile { it.isLetter() }.takeIf { it.isNotEmpty() }
     }
 
+    // Tono: mayordomo distinguido, seco, servicial y con una pizca de sarcasmo.
+    // Se dirige al usuario como "señor". Nada de personajes protegidos: es un estilo
+    // genérico, no una imitación de ninguna voz o actor concreto (ver D-009).
     private fun buildAssistantResponse(
         intentType: IntentType,
         actions: List<ActionItem>,
         clarifyingQuestions: List<ClarifyingQuestion>,
     ): String {
-        clarifyingQuestions.firstOrNull()?.let { return "Falta dato: ${it.question}" }
+        clarifyingQuestions.firstOrNull()?.let { return "Aún me falta un dato, señor: ${it.question}" }
         return when (intentType) {
-            IntentType.SHOPPING -> "Recado detectado: compra pendiente."
-            IntentType.CARRY_ITEMS -> "Checklist creada: ${actions.joinToString(", ") { it.label }}."
-            IntentType.CALL_OR_MESSAGE -> "Contacto pendiente detectado."
-            IntentType.REMINDER -> "Recordatorio programado."
-            IntentType.PREPARE_EVENT -> "Modo preparación activado."
-            IntentType.MOOD_OR_ENERGY -> "Estado registrado. Ajustando sugerencias."
-            IntentType.IDEA_CAPTURE -> "Idea guardada."
-            IntentType.DAILY_CONSTRAINT -> "Restricción registrada."
-            IntentType.GENERAL_NOTE -> "Nota guardada."
-            IntentType.UNKNOWN -> "No se ha identificado una acción clara."
+            IntentType.SHOPPING -> "Recado de compra anotado, señor."
+            IntentType.CARRY_ITEMS ->
+                "Lista preparada, señor: ${actions.joinToString(", ") { it.label }}. Procure no olvidarla."
+            IntentType.CALL_OR_MESSAGE -> "Contacto pendiente registrado, señor."
+            IntentType.REMINDER -> "Recordatorio programado, señor. Yo me acordaré, ya que usted no lo hará."
+            IntentType.PREPARE_EVENT -> "Modo preparación activado, señor."
+            IntentType.MOOD_OR_ENERGY -> "Estado anímico registrado, señor. Ajustaré mis expectativas."
+            IntentType.IDEA_CAPTURE -> "Idea guardada, señor. Confío en que mejore con el tiempo."
+            IntentType.DAILY_CONSTRAINT -> "Restricción registrada, señor."
+            IntentType.GENERAL_NOTE -> "Nota guardada, señor."
+            IntentType.UNKNOWN -> "No he identificado ninguna acción clara, señor. Quizás con más detalle."
         }
     }
 

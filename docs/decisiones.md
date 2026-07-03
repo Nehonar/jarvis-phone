@@ -116,3 +116,41 @@ hardware/TEE en dispositivo). `AndroidKeystoreApiKeyStore` no tiene test unitari
 este motivo; el resto del código que depende de `ApiKeyStore` (`ConfigurableAIProvider`,
 `SettingsViewModel`) se testea contra un `FakeApiKeyStore` en memoria. Verificación real
 pendiente de dispositivo (ver checklist de `docs/fase-3-plan.md`).
+
+## D-009 · Personalidad del asistente: mayordomo genérico, no Jarvis de Marvel
+
+**Fecha:** 2026-07-03 · **Origen:** usuario · **Tipo:** producto / propiedad intelectual
+
+El usuario pidió que el asistente "hable con la voz de Jarvis de las películas de
+Marvel" y tenga su personalidad. Jarvis es un personaje protegido (Disney/Marvel); el
+propio prompt de producto de este proyecto ya excluía explícitamente copiar
+"marcas, personajes ni interfaces protegidas". Resolución:
+
+- **Personalidad de texto** (`assistant_response`, en `MockAIProvider` y
+  `PromptBuilder.SYSTEM_PROMPT`): tono seco, servicial, con sarcasmo discreto, estilo
+  "mayordomo distinguido" genérico, dirigiéndose al usuario como "señor". Esto es un
+  estilo propio, no una imitación de ningún personaje/actor concreto.
+- **Voz hablada (TTS)**: NO implementada todavía. Cuando se construya (candidata a
+  Fase 4, junto con notificaciones), usará `android.speech.tts.TextToSpeech` con una
+  voz neutra del sistema — nunca una clonación o imitación de la voz de un actor o
+  personaje protegido. El usuario aceptó explícitamente que no hace falta "la voz del
+  actor de doblaje", solo un timbre con carácter "tipo mayordomo".
+
+## D-010 · Bucle de aclaración conversacional en captura
+
+**Fecha:** 2026-07-03 · **Origen:** usuario · **Tipo:** producto
+
+Hasta ahora, si la IA marcaba `clarifying_questions`, la nota se guardaba igualmente y
+el usuario tenía que abrir una nota de voz nueva para responder — rompiendo la
+conversación (fricción real detectada por el usuario probando la Fase 3: "recuérdame
+médico mañana a las 8" pidió la hora de salida, y no había forma de contestar en el
+mismo flujo).
+
+`CaptureViewModel` ahora mantiene el bucle dentro de la misma sesión de captura: si
+falta un dato, pasa a un estado `AwaitingAnswer`, escucha la respuesta, la concatena a
+la transcripción original (`"$original. $respuesta"`) y vuelve a interpretar. Tope de
+3 rondas (`MAX_CLARIFICATION_ROUNDS`) para no quedar en bucle indefinido si la IA sigue
+pidiendo datos; agotadas las rondas, se guarda igualmente con lo que haya (Review ya
+muestra el panel de "pregunta pendiente" para ese caso). La nota se guarda en Room en
+cada ronda (estado `TRANSCRIBED`), así que cancelar a mitad de conversación no pierde
+nada: queda en el historial con "REINTENTAR IA" disponible.

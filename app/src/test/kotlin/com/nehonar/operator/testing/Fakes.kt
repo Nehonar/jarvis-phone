@@ -21,12 +21,32 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
-class FakeSpeechToText(
-    private val events: List<SttEvent>,
-    private val available: Boolean = true,
+/**
+ * Cada llamada a [listen] consume la siguiente lista de [responses] en orden (útil
+ * para simular varias rondas de una conversación); si se llama más veces de las que
+ * hay respuestas, repite la última.
+ */
+class FakeSpeechToText private constructor(
+    private val responses: List<List<SttEvent>>,
+    private val available: Boolean,
 ) : SpeechToText {
+
+    constructor(events: List<SttEvent>, available: Boolean = true) : this(listOf(events), available)
+
+    private var callIndex = 0
+
     override fun isAvailable(): Boolean = available
-    override fun listen(): Flow<SttEvent> = events.asFlow()
+
+    override fun listen(): Flow<SttEvent> {
+        val events = responses.getOrElse(callIndex) { responses.last() }
+        callIndex++
+        return events.asFlow()
+    }
+
+    companion object {
+        fun sequence(vararg responses: List<SttEvent>, available: Boolean = true): FakeSpeechToText =
+            FakeSpeechToText(responses.toList(), available)
+    }
 }
 
 class FakeVoiceNoteRepository : VoiceNoteRepository {

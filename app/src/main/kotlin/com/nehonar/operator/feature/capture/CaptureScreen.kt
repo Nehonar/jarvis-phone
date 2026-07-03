@@ -131,6 +131,15 @@ fun CaptureScreen(
                         color = OperatorColors.TextDim,
                     )
                 }
+                is CaptureUiState.AwaitingAnswer -> {
+                    StatusLine("MODE", "AWAITING ANSWER", valueColor = OperatorColors.Warning)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = s.prompt,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OperatorColors.Warning,
+                    )
+                }
                 is CaptureUiState.Parsed -> {
                     StatusLine("MODE", "PARSED", valueColor = OperatorColors.Cyan)
                 }
@@ -138,7 +147,7 @@ fun CaptureScreen(
                     StatusLine("MODE", "PENDING", valueColor = OperatorColors.Warning)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "Nota guardada. ${s.reason}.",
+                        text = "Nota guardada, señor. ${s.reason}.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = OperatorColors.Warning,
                     )
@@ -177,6 +186,20 @@ fun CaptureScreen(
                     onClick = viewModel::cancelCapture,
                     modifier = Modifier.fillMaxWidth(),
                     accent = OperatorColors.Warning,
+                )
+            }
+            is CaptureUiState.AwaitingAnswer -> {
+                OperatorButton(
+                    text = "RESPONDER",
+                    onClick = viewModel::startAnsweringClarification,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OperatorButton(
+                    text = "CANCEL",
+                    onClick = viewModel::cancelCapture,
+                    modifier = Modifier.fillMaxWidth(),
+                    accent = OperatorColors.TextDim,
                 )
             }
             is CaptureUiState.SavedPending -> {
