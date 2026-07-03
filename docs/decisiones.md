@@ -61,6 +61,25 @@ AGP, AndroidX y Compose BOM: **no verificables** desde el entorno remoto (Google
 bloqueado); se pinean versiones estables conocidas y, si CI falla en resolución, se
 ajustan con el mensaje de error como guía.
 
+## D-007 · Opción a considerar en Fase 3: audio nativo multimodal (Gemini)
+
+**Fecha:** 2026-07-03 · **Origen:** usuario · **Tipo:** nota para fase futura
+
+Los modelos Gemini (Flash/Pro) aceptan audio (e imagen/vídeo) directamente en la
+petición, sin transcripción previa: fusionarían `core-voice` + `core-ai` en una sola
+llamada (`parseVoiceAudio(bytes)` en vez de transcribir con `SpeechRecognizer` y luego
+`parseVoiceNote(transcript)`), y a futuro permitiría interpretar imágenes (tickets,
+notas manuscritas) sin OCR aparte.
+
+Trade-off frente al enfoque actual: exige red siempre (rompe el uso offline que hoy
+ofrece `SpeechRecognizer` en muchos dispositivos) y envía audio en bruto en vez de solo
+texto (más superficie de datos salientes). Coste/latencia para clips cortos no es un
+problema.
+
+**No se actúa ahora.** Queda como una opción más a evaluar en la Fase 3 ("IA real
+configurable"), junto a DeepSeek/proveedores compatibles con formato OpenAI, no como
+sustituto obligado del pipeline STT→IA actual.
+
 ## D-006 · Test de migración Room sin `MigrationTestHelper`
 
 **Fecha:** 2026-07-03 · **Tipo:** técnica
