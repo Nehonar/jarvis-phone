@@ -58,8 +58,8 @@ los colores fijos de la consola, coherente con la app — solo tema oscuro).
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests: `WidgetStateLoader` (próximo + contador + vacío), refresco del
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28671071017)
+- [x] Tests: `WidgetStateLoader` (próximo + contador + vacío), refresco del
       widget invocado en accept/done/posponer/descartar
 - [ ] Puedo añadir el widget a la pantalla de inicio y ver NEXT + PENDING
       (dispositivo)
