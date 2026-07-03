@@ -1,5 +1,10 @@
 package com.nehonar.operator.feature.review
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +24,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nehonar.operator.core.ai.ActionItem
@@ -36,9 +43,32 @@ fun ReviewScreen(
     viewModel: ReviewViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(state) {
         if (state is ReviewUiState.Done) onDone()
+    }
+
+    // Aceptar puede programar una notificación real: en Android 13+ hay que pedir
+    // POST_NOTIFICATIONS en runtime. Se acepta igualmente aunque se deniegue (la
+    // alarma se programa; solo dejaría de mostrarse el aviso, elección del usuario).
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { viewModel.accept() }
+
+    val onAcceptClick: () -> Unit = accept@{
+        val current = state
+        val willScheduleReminder = current is ReviewUiState.Content &&
+            current.intent.date != null && current.intent.time != null
+        val needsPermission = willScheduleReminder &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            viewModel.accept()
+        }
     }
 
     Column(
@@ -75,7 +105,7 @@ fun ReviewScreen(
             ReviewUiState.Done -> Unit
             is ReviewUiState.Content -> ReviewContent(
                 state = s,
-                onAccept = viewModel::accept,
+                onAccept = onAcceptClick,
                 onDiscard = viewModel::discard,
                 onStartEditing = viewModel::startEditing,
                 onCancelEditing = viewModel::cancelEditing,

@@ -65,9 +65,10 @@ abstract class OperatorDatabaseV2ForTest : RoomDatabase() {
 }
 
 /**
- * Verifica MIGRATION_1_2 sin depender de los JSON de schema exportados
- * (ver docs/decisiones.md D-006): se construye un fichero real en v1, se
- * cierra, y se reabre con la base real en v2 aplicando la migración.
+ * Verifica las migraciones sin depender de los JSON de schema exportados
+ * (ver docs/decisiones.md D-006): se construye un fichero real con el esquema
+ * antiguo (base "sombra"), se cierra, y se reabre con la base real aplicando
+ * las migraciones.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -87,7 +88,7 @@ class MigrationTest {
     }
 
     @Test
-    fun `migracion 1 a 2 conserva las notas y habilita parsed_intents`() = runBlocking {
+    fun `migracion desde v1 conserva las notas y habilita parsed_intents`() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
         val v1Db = Room.databaseBuilder(context, OperatorDatabaseV1ForTest::class.java, dbFile.path)
@@ -104,16 +105,17 @@ class MigrationTest {
         )
         v1Db.close()
 
-        val v2Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2)
+        // La base real ya va por v3: abrirla aplica la cadena completa 1→2→3.
+        val migratedDb = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .allowMainThreadQueries()
             .build()
 
-        val notes = v2Db.voiceNoteDao().observeAll().first()
+        val notes = migratedDb.voiceNoteDao().observeAll().first()
         assertEquals(1, notes.size)
         assertEquals("comprar fruta", notes.single().transcript)
 
-        v2Db.parsedIntentDao().upsert(
+        migratedDb.parsedIntentDao().upsert(
             ParsedIntentEntity(
                 voiceNoteId = "n1",
                 intentType = "SHOPPING",
@@ -128,10 +130,10 @@ class MigrationTest {
                 createdAtEpochMillis = 2_000L,
             ),
         )
-        val stored = v2Db.parsedIntentDao().getByVoiceNoteId("n1")
+        val stored = migratedDb.parsedIntentDao().getByVoiceNoteId("n1")
         assertEquals("SHOPPING", stored?.intentType)
 
-        v2Db.close()
+        migratedDb.close()
     }
 
     @Test

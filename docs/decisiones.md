@@ -166,6 +166,11 @@ límites del entorno de CI/sandbox, documentados para no bloquear el resto de la
   `SCHEDULE_EXACT_ALARM` (sin diálogo runtime estándar). Si `canScheduleExactAlarms()`
   es `false`, se usa `setAndAllowWhileIdle` (aproximado) en vez de bloquear la función;
   ver riesgo 1 de `docs/fase-4-plan.md`.
+- **`POST_NOTIFICATIONS` (Android 13+)** se pide en runtime justo al pulsar ACCEPT en
+  Review cuando la intención tiene fecha/hora resueltas (el momento en que el permiso
+  cobra sentido para el usuario). Si se deniega, la intención se acepta y la alarma se
+  programa igualmente: solo deja de mostrarse la notificación, que es la elección del
+  usuario y puede revertirse en Ajustes del sistema.
 - **`BootCompletedReceiver`, `ReminderNotifier` y el disparo real de la notificación** no
   son verificables con Robolectric del mismo modo que la lógica pura (no hay reinicio de
   dispositivo real ni notificación de sistema real en la JVM de test); se separó la
