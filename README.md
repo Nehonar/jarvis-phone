@@ -9,11 +9,13 @@ de consola retro-futurista. Local-first, IA intercambiable (BYOK), sin tono de c
 
 ## Estado
 
-**Fase 2 — Interpretación con IA mock**: implementada. Cada nota capturada se
-interpreta automáticamente (recordatorio, compra, cosas que llevar, llamada...) con un
-proveedor simulado, sin red; pantalla de revisión para aceptar, editar o descartar.
-Sobre la base de las Fases 0 (Compose, navegación, tema, Room, DataStore) y 1
-(captura por voz, historial).
+**Fase 3 — IA real configurable**: implementada. Desde Ajustes se elige proveedor
+(DeepSeek, OpenAI o Gemini), se guarda la API key cifrada (Android Keystore) y el
+modelo a usar; un único cliente HTTP (compatible con el formato "chat completions" de
+los tres) interpreta las notas de voz. Si falla la red o la clave, la nota nunca se
+pierde: queda pendiente y se puede reintentar desde `[ LOG ]`. Sobre la base de las
+Fases 0 (Compose, navegación, tema, Room, DataStore), 1 (captura por voz, historial) y
+2 (interpretación de intenciones, revisión).
 
 ## Compilar
 

@@ -128,7 +128,8 @@ Si `parseVoiceNote` devuelve `Failure`:
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28653880477,
+      commit `64f91f0`, 2026-07-03)
 - [x] `IntentJsonParser`: tests con JSON válido, con fences de markdown, con campos
       faltantes, con JSON corrupto
 - [x] `CaptureViewModel`/`ReviewViewModel`/`HistoryViewModel`: tests de éxito y de fallo
