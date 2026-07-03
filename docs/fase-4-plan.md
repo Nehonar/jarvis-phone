@@ -105,8 +105,8 @@ fila con fecha/hora formateada estilo operador y tres acciones: **DONE** (estado
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests: extracción date/time del mock, migración Room 2→3, `ReviewViewModel.accept`
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28666712793)
+- [x] Tests: extracción date/time del mock, migración Room 2→3, `ReviewViewModel.accept`
       crea y programa el recordatorio cuando hay fecha/hora
 - [ ] Puedo decir "recuérdame X mañana a las 9", aceptar en Review, y ver el
       recordatorio en la pantalla de pendientes (dispositivo)
