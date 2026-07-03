@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,9 +30,18 @@ import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 @Composable
 fun HistoryScreen(
     onBack: () -> Unit,
+    onOpenReview: (String) -> Unit,
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()
+    val navigateToReviewId by viewModel.navigateToReviewId.collectAsStateWithLifecycle()
+
+    LaunchedEffect(navigateToReviewId) {
+        navigateToReviewId?.let { id ->
+            onOpenReview(id)
+            viewModel.consumeNavigation()
+        }
+    }
 
     Column(
         Modifier
@@ -100,6 +110,15 @@ fun HistoryScreen(
                                 modifier = Modifier.clickable { viewModel.delete(item.id) },
                             )
                         }
+                        if (item.canRetry) {
+                            Spacer(Modifier.height(8.dp))
+                            OperatorButton(
+                                text = "REINTENTAR IA",
+                                onClick = { viewModel.retryParsing(item.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                                accent = OperatorColors.Warning,
+                            )
+                        }
                     }
                     Spacer(Modifier.height(8.dp))
                 }
@@ -121,7 +140,7 @@ fun HistoryScreen(
 
 private fun VoiceNoteStatus.toColor(): Color = when (this) {
     VoiceNoteStatus.PENDING -> OperatorColors.Warning
-    VoiceNoteStatus.TRANSCRIBED -> OperatorColors.Cyan
+    VoiceNoteStatus.TRANSCRIBED -> OperatorColors.Warning
     VoiceNoteStatus.PARSED -> OperatorColors.Phosphor
     VoiceNoteStatus.FAILED -> OperatorColors.Danger
 }

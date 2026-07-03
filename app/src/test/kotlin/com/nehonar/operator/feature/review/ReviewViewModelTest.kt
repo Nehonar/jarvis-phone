@@ -1,6 +1,7 @@
 package com.nehonar.operator.feature.review
 
 import androidx.lifecycle.SavedStateHandle
+import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.domain.model.VoiceNote
@@ -106,7 +107,7 @@ class ReviewViewModelTest {
             summary = "llevar paraguas",
             assistantResponse = "Checklist creada: paraguas.",
         )
-        val aiProvider = FakeAIProvider { reparsed }
+        val aiProvider = FakeAIProvider { AIParseResult.Success(reparsed) }
         val vm = viewModel("n1", aiProvider)
 
         vm.startEditing()
@@ -117,6 +118,26 @@ class ReviewViewModelTest {
         assertEquals("llevar paraguas", (state as ReviewUiState.Content).transcript)
         assertEquals(IntentType.CARRY_ITEMS, state.intent.intentType)
         assertEquals("llevar paraguas", voiceNoteRepository.getById("n1")?.transcript)
+        assertEquals(VoiceNoteStatus.PARSED, voiceNoteRepository.getById("n1")?.status)
+    }
+
+    @Test
+    fun `fallo de la IA al reparsear conserva el texto original y muestra el error`() = runTest {
+        seedNote("n1", "comprar fruta", sampleIntent())
+        val aiProvider = FakeAIProvider { AIParseResult.Failure("Sin conexión") }
+        val vm = viewModel("n1", aiProvider)
+
+        vm.startEditing()
+        vm.saveEditedText("llevar paraguas")
+
+        val state = vm.uiState.value
+        assertTrue(state is ReviewUiState.Content)
+        val content = state as ReviewUiState.Content
+        assertTrue(content.isEditing)
+        assertEquals("Sin conexión", content.editError)
+        // El transcript guardado no cambia: el fallo no debe perder la versión aceptada.
+        assertEquals("comprar fruta", voiceNoteRepository.getById("n1")?.transcript)
+        assertEquals(IntentType.SHOPPING, parsedIntentRepository.getByVoiceNoteId("n1")?.intentType)
     }
 
     @Test

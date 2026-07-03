@@ -111,6 +111,14 @@ private fun ReviewContent(
                     cursorColor = OperatorColors.Phosphor,
                 ),
             )
+            state.editError?.let { error ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OperatorColors.Warning,
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

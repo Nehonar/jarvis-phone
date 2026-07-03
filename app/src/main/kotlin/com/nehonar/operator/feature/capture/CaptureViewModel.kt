@@ -2,6 +2,7 @@ package com.nehonar.operator.feature.capture
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.domain.model.VoiceNote
@@ -25,6 +26,7 @@ sealed interface CaptureUiState {
     data class Listening(val partialText: String = "", val level: Float = 0f) : CaptureUiState
     data object Processing : CaptureUiState
     data class Parsed(val voiceNoteId: String) : CaptureUiState
+    data class SavedPending(val voiceNoteId: String, val reason: String) : CaptureUiState
     data class Error(val message: String, val canRetry: Boolean = true) : CaptureUiState
 }
 
@@ -77,6 +79,13 @@ class CaptureViewModel @Inject constructor(
         }
     }
 
+    /** Vuelve a Idle tras haber navegado al historial desde un SavedPending. */
+    fun onNavigatedToHistory() {
+        if (_uiState.value is CaptureUiState.SavedPending) {
+            _uiState.value = CaptureUiState.Idle
+        }
+    }
+
     private suspend fun onSttEvent(event: SttEvent) {
         when (event) {
             SttEvent.Ready, SttEvent.SpeechStart -> {
@@ -119,10 +128,16 @@ class CaptureViewModel @Inject constructor(
             status = VoiceNoteStatus.TRANSCRIBED,
         )
         voiceNoteRepository.save(note)
-        val parsedIntent = aiProvider.parseVoiceNote(transcript)
-        parsedIntentRepository.save(note.id, parsedIntent)
-        voiceNoteRepository.save(note.copy(status = VoiceNoteStatus.PARSED))
-        _uiState.value = CaptureUiState.Parsed(note.id)
+        when (val result = aiProvider.parseVoiceNote(transcript)) {
+            is AIParseResult.Success -> {
+                parsedIntentRepository.save(note.id, result.intent)
+                voiceNoteRepository.save(note.copy(status = VoiceNoteStatus.PARSED))
+                _uiState.value = CaptureUiState.Parsed(note.id)
+            }
+            is AIParseResult.Failure -> {
+                _uiState.value = CaptureUiState.SavedPending(note.id, result.reason)
+            }
+        }
     }
 }
 

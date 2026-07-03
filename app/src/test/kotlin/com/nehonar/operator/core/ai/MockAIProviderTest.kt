@@ -3,15 +3,22 @@ package com.nehonar.operator.core.ai
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 class MockAIProviderTest {
 
     private val provider = MockAIProvider()
 
+    private suspend fun parse(transcript: String): ParsedIntent =
+        when (val result = provider.parseVoiceNote(transcript)) {
+            is AIParseResult.Success -> result.intent
+            is AIParseResult.Failure -> error("MockAIProvider no debería fallar nunca: ${result.reason}")
+        }
+
     @Test
     fun `comprar detecta SHOPPING y extrae los items`() = runTest {
-        val result = provider.parseVoiceNote("comprar fruta y yogures")
+        val result = parse("comprar fruta y yogures")
 
         assertEquals(IntentType.SHOPPING, result.intentType)
         assertEquals(
@@ -22,7 +29,7 @@ class MockAIProviderTest {
 
     @Test
     fun `llevar detecta CARRY_ITEMS y extrae los items`() = runTest {
-        val result = provider.parseVoiceNote("llevar portátil y cargador")
+        val result = parse("llevar portátil y cargador")
 
         assertEquals(IntentType.CARRY_ITEMS, result.intentType)
         assertEquals(
@@ -33,7 +40,7 @@ class MockAIProviderTest {
 
     @Test
     fun `llamar a detecta CALL_OR_MESSAGE con el nombre`() = runTest {
-        val result = provider.parseVoiceNote("llamar a Marc mañana")
+        val result = parse("llamar a Marc mañana")
 
         assertEquals(IntentType.CALL_OR_MESSAGE, result.intentType)
         assertEquals("Marc", result.actions.single { it.type == ActionType.CALL }.label)
@@ -41,7 +48,7 @@ class MockAIProviderTest {
 
     @Test
     fun `recuerdame sin hora genera pregunta de aclaracion`() = runTest {
-        val result = provider.parseVoiceNote("recuérdame llamar al médico")
+        val result = parse("recuérdame llamar al médico")
 
         assertEquals(IntentType.REMINDER, result.intentType)
         assertEquals(1, result.clarifyingQuestions.size)
@@ -51,7 +58,7 @@ class MockAIProviderTest {
 
     @Test
     fun `recuerdame con hora explicita no genera pregunta`() = runTest {
-        val result = provider.parseVoiceNote("recuérdame llamar al médico a las 9")
+        val result = parse("recuérdame llamar al médico a las 9")
 
         assertEquals(IntentType.REMINDER, result.intentType)
         assertTrue(result.clarifyingQuestions.isEmpty())
@@ -59,7 +66,7 @@ class MockAIProviderTest {
 
     @Test
     fun `oficina sin hora de salida pregunta por ella`() = runTest {
-        val result = provider.parseVoiceNote("mañana voy a la oficina")
+        val result = parse("mañana voy a la oficina")
 
         assertEquals(IntentType.PREPARE_EVENT, result.intentType)
         assertEquals("departure_time", result.clarifyingQuestions.single().field)
@@ -67,7 +74,7 @@ class MockAIProviderTest {
 
     @Test
     fun `oficina con hora de salida no pregunta`() = runTest {
-        val result = provider.parseVoiceNote("mañana voy a la oficina, salgo a las 8")
+        val result = parse("mañana voy a la oficina, salgo a las 8")
 
         assertEquals(IntentType.PREPARE_EVENT, result.intentType)
         assertTrue(result.clarifyingQuestions.isEmpty())
@@ -75,7 +82,7 @@ class MockAIProviderTest {
 
     @Test
     fun `texto sin disparadores es UNKNOWN`() = runTest {
-        val result = provider.parseVoiceNote("hola qué tal todo bien")
+        val result = parse("hola qué tal todo bien")
 
         assertEquals(IntentType.UNKNOWN, result.intentType)
         assertTrue(result.confidence < 0.5f)
@@ -83,14 +90,14 @@ class MockAIProviderTest {
 
     @Test
     fun `mood detecta MOOD_OR_ENERGY`() = runTest {
-        val result = provider.parseVoiceNote("estoy muy cansado hoy")
+        val result = parse("estoy muy cansado hoy")
 
         assertEquals(IntentType.MOOD_OR_ENERGY, result.intentType)
     }
 
     @Test
     fun `el ejemplo del prompt de producto genera acciones de llevar y comprar`() = runTest {
-        val result = provider.parseVoiceNote(
+        val result = parse(
             "Mañana voy a la oficina, acuérdame llevar el portátil y el cargador, " +
                 "y al volver comprar fruta y yogures.",
         )

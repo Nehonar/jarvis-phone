@@ -104,3 +104,15 @@ vez de como test instrumentado. Motivo: se ejecuta en CI sin emulador, con lo qu
 definición de terminado de Fase 0 ("Room operativo, test de DAO en verde") es verificable
 en cada push. El smoke de navegación sí es instrumentado (`app/src/androidTest/`) y se
 ejecuta solo en dispositivo/emulador.
+
+## D-008 · `AndroidKeystoreApiKeyStore` sin test unitario
+
+**Fecha:** 2026-07-03 · **Tipo:** técnica
+
+El provider criptográfico `"AndroidKeyStore"` (usado para cifrar la API key del
+proveedor de IA real, Fase 3) no está disponible bajo Robolectric ni en una JVM de
+escritorio normal: es específico del runtime Android real (claves respaldadas por
+hardware/TEE en dispositivo). `AndroidKeystoreApiKeyStore` no tiene test unitario por
+este motivo; el resto del código que depende de `ApiKeyStore` (`ConfigurableAIProvider`,
+`SettingsViewModel`) se testea contra un `FakeApiKeyStore` en memoria. Verificación real
+pendiente de dispositivo (ver checklist de `docs/fase-3-plan.md`).

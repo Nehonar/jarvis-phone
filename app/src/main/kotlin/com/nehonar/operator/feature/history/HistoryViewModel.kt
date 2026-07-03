@@ -2,6 +2,8 @@ package com.nehonar.operator.feature.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nehonar.operator.core.ai.AIParseResult
+import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.common.formatOperatorDateTime
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
@@ -10,8 +12,10 @@ import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -22,12 +26,15 @@ data class HistoryItem(
     val status: VoiceNoteStatus,
     val transcript: String,
     val intentType: IntentType?,
-)
+) {
+    val canRetry: Boolean get() = status == VoiceNoteStatus.TRANSCRIBED
+}
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val voiceNoteRepository: VoiceNoteRepository,
     private val parsedIntentRepository: ParsedIntentRepository,
+    private val aiProvider: AIProvider,
 ) : ViewModel() {
 
     val items: StateFlow<List<HistoryItem>> = combine(
@@ -49,10 +56,31 @@ class HistoryViewModel @Inject constructor(
         initialValue = emptyList(),
     )
 
+    private val _navigateToReviewId = MutableStateFlow<String?>(null)
+    val navigateToReviewId: StateFlow<String?> = _navigateToReviewId.asStateFlow()
+
     fun delete(id: String) {
         viewModelScope.launch {
             parsedIntentRepository.deleteByVoiceNoteId(id)
             voiceNoteRepository.delete(id)
         }
+    }
+
+    fun retryParsing(voiceNoteId: String) {
+        viewModelScope.launch {
+            val note = voiceNoteRepository.getById(voiceNoteId) ?: return@launch
+            when (val result = aiProvider.parseVoiceNote(note.transcript)) {
+                is AIParseResult.Success -> {
+                    parsedIntentRepository.save(voiceNoteId, result.intent)
+                    voiceNoteRepository.save(note.copy(status = VoiceNoteStatus.PARSED))
+                    _navigateToReviewId.value = voiceNoteId
+                }
+                is AIParseResult.Failure -> Unit // se queda pendiente, se puede reintentar de nuevo
+            }
+        }
+    }
+
+    fun consumeNavigation() {
+        _navigateToReviewId.value = null
     }
 }

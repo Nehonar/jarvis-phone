@@ -3,8 +3,10 @@ package com.nehonar.operator.feature.review
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +22,7 @@ sealed interface ReviewUiState {
         val transcript: String,
         val intent: ParsedIntent,
         val isEditing: Boolean = false,
+        val editError: String? = null,
     ) : ReviewUiState
     data object Done : ReviewUiState
     data object NotFound : ReviewUiState
@@ -58,7 +61,7 @@ class ReviewViewModel @Inject constructor(
     fun startEditing() {
         val current = _uiState.value
         if (current is ReviewUiState.Content) {
-            _uiState.value = current.copy(isEditing = true)
+            _uiState.value = current.copy(isEditing = true, editError = null)
         }
     }
 
@@ -76,10 +79,18 @@ class ReviewViewModel @Inject constructor(
         if (transcript.isEmpty()) return
         viewModelScope.launch {
             val note = voiceNoteRepository.getById(voiceNoteId) ?: return@launch
-            voiceNoteRepository.save(note.copy(transcript = transcript))
-            val reparsed = aiProvider.parseVoiceNote(transcript)
-            parsedIntentRepository.save(voiceNoteId, reparsed)
-            _uiState.value = ReviewUiState.Content(transcript = transcript, intent = reparsed)
+            when (val result = aiProvider.parseVoiceNote(transcript)) {
+                is AIParseResult.Success -> {
+                    voiceNoteRepository.save(
+                        note.copy(transcript = transcript, status = VoiceNoteStatus.PARSED),
+                    )
+                    parsedIntentRepository.save(voiceNoteId, result.intent)
+                    _uiState.value = ReviewUiState.Content(transcript = transcript, intent = result.intent)
+                }
+                is AIParseResult.Failure -> {
+                    _uiState.value = current.copy(isEditing = true, editError = result.reason)
+                }
+            }
         }
     }
 

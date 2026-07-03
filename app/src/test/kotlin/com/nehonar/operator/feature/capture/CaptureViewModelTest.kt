@@ -1,5 +1,6 @@
 package com.nehonar.operator.feature.capture
 
+import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
@@ -42,12 +43,14 @@ class CaptureViewModelTest {
     @Test
     fun `camino feliz guarda la nota, la parsea y termina en Parsed`() = runTest {
         val aiProvider = FakeAIProvider {
-            ParsedIntent(
-                intentType = IntentType.SHOPPING,
-                confidence = 0.8f,
-                title = "SHOPPING",
-                summary = it,
-                assistantResponse = "Recado detectado: compra pendiente.",
+            AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.SHOPPING,
+                    confidence = 0.8f,
+                    title = "SHOPPING",
+                    summary = it,
+                    assistantResponse = "Recado detectado: compra pendiente.",
+                ),
             )
         }
         val vm = viewModel(
@@ -76,6 +79,42 @@ class CaptureViewModelTest {
 
         val savedIntent = parsedIntentRepository.current.getValue(noteId)
         assertEquals(IntentType.SHOPPING, savedIntent.intentType)
+    }
+
+    @Test
+    fun `fallo de la IA guarda la nota como pendiente sin perderla`() = runTest {
+        val aiProvider = FakeAIProvider { AIParseResult.Failure("Sin conexión") }
+        val vm = viewModel(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("comprar fruta")),
+            aiProvider = aiProvider,
+        )
+
+        vm.startCapture()
+
+        val state = vm.uiState.value
+        assertTrue(state is CaptureUiState.SavedPending)
+        val pending = state as CaptureUiState.SavedPending
+        assertEquals("Sin conexión", pending.reason)
+
+        val saved = voiceNoteRepository.current.single()
+        assertEquals(pending.voiceNoteId, saved.id)
+        assertEquals(VoiceNoteStatus.TRANSCRIBED, saved.status)
+        assertEquals(0, parsedIntentRepository.current.size)
+    }
+
+    @Test
+    fun `onNavigatedToHistory vuelve a Idle solo si el estado era SavedPending`() = runTest {
+        val aiProvider = FakeAIProvider { AIParseResult.Failure("Sin conexión") }
+        val vm = viewModel(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("comprar fruta")),
+            aiProvider = aiProvider,
+        )
+        vm.startCapture()
+        assertTrue(vm.uiState.value is CaptureUiState.SavedPending)
+
+        vm.onNavigatedToHistory()
+
+        assertEquals(CaptureUiState.Idle, vm.uiState.value)
     }
 
     @Test

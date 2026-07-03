@@ -39,6 +39,7 @@ import com.nehonar.operator.core.design.theme.OperatorColors
 fun CaptureScreen(
     onBack: () -> Unit,
     onCaptured: (voiceNoteId: String) -> Unit,
+    onOpenHistory: () -> Unit,
     viewModel: CaptureViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -133,6 +134,15 @@ fun CaptureScreen(
                 is CaptureUiState.Parsed -> {
                     StatusLine("MODE", "PARSED", valueColor = OperatorColors.Cyan)
                 }
+                is CaptureUiState.SavedPending -> {
+                    StatusLine("MODE", "PENDING", valueColor = OperatorColors.Warning)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Nota guardada. ${s.reason}.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OperatorColors.Warning,
+                    )
+                }
                 is CaptureUiState.Error -> {
                     StatusLine("MODE", "ERROR", valueColor = OperatorColors.Danger)
                     Spacer(Modifier.height(6.dp))
@@ -167,6 +177,23 @@ fun CaptureScreen(
                     onClick = viewModel::cancelCapture,
                     modifier = Modifier.fillMaxWidth(),
                     accent = OperatorColors.Warning,
+                )
+            }
+            is CaptureUiState.SavedPending -> {
+                OperatorButton(
+                    text = "VER EN LOG",
+                    onClick = {
+                        onOpenHistory()
+                        viewModel.onNavigatedToHistory()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OperatorButton(
+                    text = "BACK",
+                    onClick = onBack,
+                    modifier = Modifier.fillMaxWidth(),
+                    accent = OperatorColors.TextDim,
                 )
             }
             is CaptureUiState.Error -> {

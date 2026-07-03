@@ -9,7 +9,7 @@ import javax.inject.Inject
  */
 class MockAIProvider @Inject constructor() : AIProvider {
 
-    override suspend fun parseVoiceNote(transcript: String): ParsedIntent {
+    override suspend fun parseVoiceNote(transcript: String): AIParseResult {
         val text = transcript.trim()
         val lower = text.lowercase()
 
@@ -55,16 +55,18 @@ class MockAIProvider @Inject constructor() : AIProvider {
             }
         }
 
-        return ParsedIntent(
-            intentType = intentType,
-            confidence = if (intentType == IntentType.UNKNOWN) 0.2f else 0.8f,
-            title = intentType.toTitle(),
-            summary = text,
-            actions = actions,
-            reminders = reminders,
-            clarifyingQuestions = clarifyingQuestions,
-            assistantResponse = buildAssistantResponse(intentType, actions, clarifyingQuestions),
-            needsConfirmation = true,
+        return AIParseResult.Success(
+            ParsedIntent(
+                intentType = intentType,
+                confidence = if (intentType == IntentType.UNKNOWN) 0.2f else 0.8f,
+                title = intentType.toTitle(),
+                summary = text,
+                actions = actions,
+                reminders = reminders,
+                clarifyingQuestions = clarifyingQuestions,
+                assistantResponse = buildAssistantResponse(intentType, actions, clarifyingQuestions),
+                needsConfirmation = true,
+            ),
         )
     }
 

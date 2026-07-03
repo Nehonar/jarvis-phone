@@ -1,12 +1,15 @@
 package com.nehonar.operator.testing
 
+import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
+import com.nehonar.operator.core.ai.AIProviderType
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import com.nehonar.operator.core.security.ApiKeyStore
 import com.nehonar.operator.core.voice.SpeechToText
 import com.nehonar.operator.core.voice.SttEvent
 import java.time.Instant
@@ -70,22 +73,39 @@ class FakeParsedIntentRepository : ParsedIntentRepository {
 }
 
 class FakeAIProvider(
-    private val result: (String) -> ParsedIntent = { transcript ->
-        ParsedIntent(
-            intentType = IntentType.GENERAL_NOTE,
-            confidence = 0.5f,
-            title = "GENERAL NOTE",
-            summary = transcript,
-            assistantResponse = "Nota guardada.",
+    private val result: (String) -> AIParseResult = { transcript ->
+        AIParseResult.Success(
+            ParsedIntent(
+                intentType = IntentType.GENERAL_NOTE,
+                confidence = 0.5f,
+                title = "GENERAL NOTE",
+                summary = transcript,
+                assistantResponse = "Nota guardada.",
+            ),
         )
     },
 ) : AIProvider {
     var lastTranscript: String? = null
         private set
 
-    override suspend fun parseVoiceNote(transcript: String): ParsedIntent {
+    override suspend fun parseVoiceNote(transcript: String): AIParseResult {
         lastTranscript = transcript
         return result(transcript)
+    }
+}
+
+class FakeApiKeyStore : ApiKeyStore {
+
+    private val keys = mutableMapOf<AIProviderType, String>()
+
+    override suspend fun get(provider: AIProviderType): String? = keys[provider]
+
+    override suspend fun set(provider: AIProviderType, apiKey: String) {
+        keys[provider] = apiKey
+    }
+
+    override suspend fun clear(provider: AIProviderType) {
+        keys.remove(provider)
     }
 }
 

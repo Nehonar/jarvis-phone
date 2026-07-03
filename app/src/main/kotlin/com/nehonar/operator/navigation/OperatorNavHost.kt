@@ -36,13 +36,21 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
                         popUpTo(CaptureRoute) { inclusive = true }
                     }
                 },
+                onOpenHistory = {
+                    navController.navigate(HistoryRoute) {
+                        popUpTo(CaptureRoute) { inclusive = true }
+                    }
+                },
             )
         }
         composable<ReviewRoute> {
             ReviewScreen(onDone = { navController.popBackStack() })
         }
         composable<HistoryRoute> {
-            HistoryScreen(onBack = { navController.popBackStack() })
+            HistoryScreen(
+                onBack = { navController.popBackStack() },
+                onOpenReview = { voiceNoteId -> navController.navigate(ReviewRoute(voiceNoteId)) },
+            )
         }
         composable<ConsoleRoute> {
             ConsoleScreen(onBack = { navController.popBackStack() })
