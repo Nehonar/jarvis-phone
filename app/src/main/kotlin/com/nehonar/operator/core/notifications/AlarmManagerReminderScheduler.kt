@@ -49,7 +49,7 @@ class AlarmManagerReminderScheduler @Inject constructor(
         pendingIntent.cancel()
     }
 
-    private fun canScheduleExact(): Boolean =
+    override fun canScheduleExact(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
 
     private fun pendingIntentFor(reminderId: String, message: String): PendingIntent {

@@ -63,6 +63,19 @@ class RemindersViewModelTest {
     }
 
     @Test
+    fun `expone el estado del permiso de alarmas exactas y lo refresca`() = runTest {
+        val reminderScheduler = FakeReminderScheduler().apply { exactAlarmsEnabled = false }
+        val vm = RemindersViewModel(FakeReminderRepository(), reminderScheduler)
+
+        assertEquals(false, vm.exactAlarmsEnabled.value)
+
+        reminderScheduler.exactAlarmsEnabled = true
+        vm.refreshPermissions()
+
+        assertEquals(true, vm.exactAlarmsEnabled.value)
+    }
+
+    @Test
     fun `posponer suma 15 minutos y reprograma`() = runTest {
         val reminderRepository = FakeReminderRepository()
         reminderRepository.save(reminder("r1", 1_000L))

@@ -11,8 +11,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Duration
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -38,6 +40,14 @@ class RemindersViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList(),
         )
+
+    private val _exactAlarmsEnabled = MutableStateFlow(reminderScheduler.canScheduleExact())
+    val exactAlarmsEnabled: StateFlow<Boolean> = _exactAlarmsEnabled.asStateFlow()
+
+    /** Se llama en ON_RESUME: el usuario puede volver de conceder el permiso en Ajustes. */
+    fun refreshPermissions() {
+        _exactAlarmsEnabled.value = reminderScheduler.canScheduleExact()
+    }
 
     fun markDone(id: String) = updateStatus(id, ReminderStatus.DONE)
 

@@ -151,6 +151,7 @@ class FakeReminderScheduler : ReminderScheduler {
 
     val scheduled = mutableListOf<Reminder>()
     val cancelled = mutableListOf<String>()
+    var exactAlarmsEnabled: Boolean = true
 
     override fun schedule(reminder: Reminder) {
         scheduled += reminder
@@ -159,6 +160,8 @@ class FakeReminderScheduler : ReminderScheduler {
     override fun cancel(reminderId: String) {
         cancelled += reminderId
     }
+
+    override fun canScheduleExact(): Boolean = exactAlarmsEnabled
 }
 
 class FakeApiKeyStore : ApiKeyStore {
