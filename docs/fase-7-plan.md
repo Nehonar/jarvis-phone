@@ -61,8 +61,8 @@ REMINDERS.
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests: migración 3→4, mapper de checklist, `accept()` crea los items,
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28679903335)
+- [x] Tests: migración 3→4, mapper de checklist, `accept()` crea los items,
       `PrepViewModel` (toggle/borrar/limpiar), contador en `HomeViewModel`
 - [ ] Digo el ejemplo canónico, acepto, y veo la checklist en PREP con
       llevar/comprar agrupados (dispositivo)
