@@ -12,4 +12,7 @@ interface ParsedIntentRepository {
 
     /** Para listados (historial): tipo de intención por nota, sin cargar el resto del contrato. */
     fun observeIntentTypesByVoiceNoteId(): Flow<Map<String, IntentType>>
+
+    /** Todas las intenciones, por id de nota. Para agregados como el DayContext de Home. */
+    fun observeAll(): Flow<Map<String, ParsedIntent>>
 }

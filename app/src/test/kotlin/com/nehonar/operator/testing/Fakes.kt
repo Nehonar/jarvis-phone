@@ -99,6 +99,8 @@ class FakeParsedIntentRepository : ParsedIntentRepository {
 
     override fun observeIntentTypesByVoiceNoteId(): Flow<Map<String, IntentType>> =
         intents.map { map -> map.mapValues { (_, intent) -> intent.intentType } }
+
+    override fun observeAll(): Flow<Map<String, ParsedIntent>> = intents
 }
 
 class FakeAIProvider(

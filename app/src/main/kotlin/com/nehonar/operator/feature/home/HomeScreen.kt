@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -67,11 +68,67 @@ fun HomeScreen(
 
         Spacer(Modifier.height(16.dp))
         ConsolePanel(title = "DAY", modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "NO DATA // AWAITING INPUT",
-                style = MaterialTheme.typography.bodyMedium,
-                color = OperatorColors.TextDim,
+            val next = state.nextReminder
+            if (next != null) {
+                StatusLine("NEXT", next.timeLabel, valueColor = OperatorColors.Warning)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = next.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OperatorColors.TextPrimary,
+                )
+            } else {
+                Text(
+                    text = "SIN AVISOS PROGRAMADOS",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OperatorColors.TextDim,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            StatusLine("REMINDERS", state.pendingReminders.toString())
+            Spacer(Modifier.height(6.dp))
+            StatusLine(
+                "AWAITING REVIEW",
+                state.awaitingReview.toString(),
+                valueColor = if (state.awaitingReview > 0) OperatorColors.Warning else OperatorColors.TextPrimary,
             )
+        }
+
+        Spacer(Modifier.height(16.dp))
+        ConsolePanel(title = "FEED", modifier = Modifier.fillMaxWidth()) {
+            if (state.feed.isEmpty()) {
+                Text(
+                    text = "NO ACTIVITY TODAY // AWAITING INPUT",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OperatorColors.TextDim,
+                )
+            } else {
+                state.feed.forEachIndexed { index, item ->
+                    if (index > 0) Spacer(Modifier.height(6.dp))
+                    Row {
+                        Text(
+                            text = item.time,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OperatorColors.TextDim,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = item.tag,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OperatorColors.Cyan,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = item.text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OperatorColors.TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
         }
 
         Spacer(Modifier.weight(1f))

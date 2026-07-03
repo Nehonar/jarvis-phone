@@ -32,4 +32,7 @@ class ParsedIntentRepositoryImpl @Inject constructor(
 
     override fun observeIntentTypesByVoiceNoteId(): Flow<Map<String, IntentType>> =
         dao.observeAll().map { entities -> entities.associate { it.voiceNoteId to it.toDomain().intentType } }
+
+    override fun observeAll(): Flow<Map<String, ParsedIntent>> =
+        dao.observeAll().map { entities -> entities.associate { it.voiceNoteId to it.toDomain() } }
 }

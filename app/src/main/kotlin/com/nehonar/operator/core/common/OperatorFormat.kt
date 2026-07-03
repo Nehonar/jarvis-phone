@@ -11,7 +11,12 @@ fun formatOperatorDate(date: LocalDate): String =
 
 fun formatOperatorDateTime(instant: Instant, zone: ZoneId): String {
     val dateTime = instant.atZone(zone)
+    return "${formatOperatorDate(dateTime.toLocalDate())} ${formatOperatorTime(instant, zone)}"
+}
+
+fun formatOperatorTime(instant: Instant, zone: ZoneId): String {
+    val dateTime = instant.atZone(zone)
     val hour = dateTime.hour.toString().padStart(2, '0')
     val minute = dateTime.minute.toString().padStart(2, '0')
-    return "${formatOperatorDate(dateTime.toLocalDate())} $hour:$minute"
+    return "$hour:$minute"
 }

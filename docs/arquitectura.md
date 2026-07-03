@@ -294,7 +294,7 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 2 | `AIProvider` + `MockAIProvider` + confirmación de intención | **Implementada, CI verde** → [`fase-2-plan.md`](fase-2-plan.md) |
 | 3 | Proveedor IA real (BYOK), JSON estricto validado, cola offline | **Implementada, CI verde** → [`fase-3-plan.md`](fase-3-plan.md) |
 | 4 | Recordatorios + notificaciones estilo operador | **Implementada, CI verde** → [`fase-4-plan.md`](fase-4-plan.md) |
-| 5 | Today Ops (`DayContext` + feed de consola) | — |
+| 5 | Today Ops (`DayContext` + feed de consola) | **Implementada** → [`fase-5-plan.md`](fase-5-plan.md) |
 | 6 | Widget Glance 4x2 funcional | — |
 | 7 | Prep Engine (checklists contextuales) | — |
 | 8 | Consola visual (nodos/partículas reactivos) | — |

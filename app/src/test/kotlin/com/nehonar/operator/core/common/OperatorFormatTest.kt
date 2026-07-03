@@ -22,4 +22,10 @@ class OperatorFormatTest {
             formatOperatorDateTime(Instant.parse("2026-07-02T09:05:00Z"), ZoneOffset.UTC),
         )
     }
+
+    @Test
+    fun `formatea solo la hora con ceros a la izquierda`() {
+        assertEquals("09:05", formatOperatorTime(Instant.parse("2026-07-02T09:05:00Z"), ZoneOffset.UTC))
+        assertEquals("16:45", formatOperatorTime(Instant.parse("2026-07-02T16:45:00Z"), ZoneOffset.UTC))
+    }
 }
