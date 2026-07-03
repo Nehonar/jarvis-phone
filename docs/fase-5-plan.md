@@ -47,8 +47,8 @@ que ya está en Room.
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests de `HomeViewModel`: próximo recordatorio, contadores, feed solo
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28668345450)
+- [x] Tests de `HomeViewModel`: próximo recordatorio, contadores, feed solo
       con notas de hoy y orden descendente
 - [ ] En dispositivo: tras aceptar un recordatorio, Home muestra NEXT y el
       feed refleja la nota (dispositivo)
