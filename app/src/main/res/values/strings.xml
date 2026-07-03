@@ -4,4 +4,5 @@
     <string name="reminder_channel_name">Recordatorios</string>
     <string name="reminder_channel_description">Avisos de recordatorios que ha pedido, señor.</string>
     <string name="reminder_notification_title">Recordatorio</string>
+    <string name="widget_description">Próximo recordatorio y captura de voz directa.</string>
 </resources>

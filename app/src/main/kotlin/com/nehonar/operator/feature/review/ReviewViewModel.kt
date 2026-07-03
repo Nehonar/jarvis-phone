@@ -14,6 +14,7 @@ import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
 import com.nehonar.operator.core.notifications.ReminderScheduler
+import com.nehonar.operator.core.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -49,6 +50,7 @@ class ReviewViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
     private val reminderScheduler: ReminderScheduler,
     private val timeProvider: TimeProvider,
+    private val widgetRefresher: WidgetRefresher,
 ) : ViewModel() {
 
     // Navigation type-safe expone cada campo de ReviewRoute como argumento plano
@@ -132,6 +134,7 @@ class ReviewViewModel @Inject constructor(
         )
         reminderRepository.save(reminder)
         reminderScheduler.schedule(reminder)
+        widgetRefresher.refresh()
     }
 
     private fun resolveTriggerInstant(intent: ParsedIntent): Instant? {

@@ -4,6 +4,7 @@ import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.testing.FakeReminderRepository
 import com.nehonar.operator.testing.FakeReminderScheduler
+import com.nehonar.operator.testing.FakeWidgetRefresher
 import com.nehonar.operator.testing.MainDispatcherRule
 import java.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,7 +29,7 @@ class RemindersViewModelTest {
         reminderRepository.save(reminder("early", 1_000L))
         reminderRepository.save(reminder("done", 500L, ReminderStatus.DONE))
 
-        val vm = RemindersViewModel(reminderRepository, FakeReminderScheduler())
+        val vm = RemindersViewModel(reminderRepository, FakeReminderScheduler(), FakeWidgetRefresher())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             vm.items.collect {}
         }
@@ -37,16 +38,18 @@ class RemindersViewModelTest {
     }
 
     @Test
-    fun `marcar como hecho cambia el estado y cancela la alarma`() = runTest {
+    fun `marcar como hecho cambia el estado, cancela la alarma y refresca el widget`() = runTest {
         val reminderRepository = FakeReminderRepository()
         reminderRepository.save(reminder("r1", 1_000L))
         val reminderScheduler = FakeReminderScheduler()
-        val vm = RemindersViewModel(reminderRepository, reminderScheduler)
+        val widgetRefresher = FakeWidgetRefresher()
+        val vm = RemindersViewModel(reminderRepository, reminderScheduler, widgetRefresher)
 
         vm.markDone("r1")
 
         assertEquals(ReminderStatus.DONE, reminderRepository.current.getValue("r1").status)
         assertEquals(listOf("r1"), reminderScheduler.cancelled)
+        assertEquals(1, widgetRefresher.refreshCount)
     }
 
     @Test
@@ -54,7 +57,7 @@ class RemindersViewModelTest {
         val reminderRepository = FakeReminderRepository()
         reminderRepository.save(reminder("r1", 1_000L))
         val reminderScheduler = FakeReminderScheduler()
-        val vm = RemindersViewModel(reminderRepository, reminderScheduler)
+        val vm = RemindersViewModel(reminderRepository, reminderScheduler, FakeWidgetRefresher())
 
         vm.dismiss("r1")
 
@@ -65,7 +68,7 @@ class RemindersViewModelTest {
     @Test
     fun `expone el estado del permiso de alarmas exactas y lo refresca`() = runTest {
         val reminderScheduler = FakeReminderScheduler().apply { exactAlarmsEnabled = false }
-        val vm = RemindersViewModel(FakeReminderRepository(), reminderScheduler)
+        val vm = RemindersViewModel(FakeReminderRepository(), reminderScheduler, FakeWidgetRefresher())
 
         assertEquals(false, vm.exactAlarmsEnabled.value)
 
@@ -80,7 +83,7 @@ class RemindersViewModelTest {
         val reminderRepository = FakeReminderRepository()
         reminderRepository.save(reminder("r1", 1_000L))
         val reminderScheduler = FakeReminderScheduler()
-        val vm = RemindersViewModel(reminderRepository, reminderScheduler)
+        val vm = RemindersViewModel(reminderRepository, reminderScheduler, FakeWidgetRefresher())
 
         vm.postpone("r1")
 

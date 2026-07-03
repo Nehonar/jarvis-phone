@@ -11,6 +11,7 @@ import com.nehonar.operator.testing.FakeParsedIntentRepository
 import com.nehonar.operator.testing.FakeReminderRepository
 import com.nehonar.operator.testing.FakeReminderScheduler
 import com.nehonar.operator.testing.FakeVoiceNoteRepository
+import com.nehonar.operator.testing.FakeWidgetRefresher
 import com.nehonar.operator.testing.FixedTimeProvider
 import com.nehonar.operator.testing.MainDispatcherRule
 import java.time.Instant
@@ -30,6 +31,7 @@ class ReviewViewModelTest {
     private val reminderRepository = FakeReminderRepository()
     private val reminderScheduler = FakeReminderScheduler()
     private val timeProvider = FixedTimeProvider()
+    private val widgetRefresher = FakeWidgetRefresher()
 
     private suspend fun seedNote(id: String, transcript: String, intent: ParsedIntent) {
         voiceNoteRepository.save(
@@ -53,6 +55,7 @@ class ReviewViewModelTest {
             reminderRepository = reminderRepository,
             reminderScheduler = reminderScheduler,
             timeProvider = timeProvider,
+            widgetRefresher = widgetRefresher,
         )
 
     private fun sampleIntent() = ParsedIntent(
@@ -110,6 +113,7 @@ class ReviewViewModelTest {
         assertEquals("n1", reminder.voiceNoteId)
         assertEquals(1, reminderScheduler.scheduled.size)
         assertEquals(reminder.id, reminderScheduler.scheduled.single().id)
+        assertEquals(1, widgetRefresher.refreshCount)
     }
 
     @Test

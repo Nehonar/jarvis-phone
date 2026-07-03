@@ -7,6 +7,7 @@ import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.notifications.ReminderScheduler
+import com.nehonar.operator.core.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Duration
 import java.time.ZoneId
@@ -31,6 +32,7 @@ private val POSTPONE_DURATION: Duration = Duration.ofMinutes(15)
 class RemindersViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
     private val reminderScheduler: ReminderScheduler,
+    private val widgetRefresher: WidgetRefresher,
 ) : ViewModel() {
 
     val items: StateFlow<List<ReminderItem>> = reminderRepository.observePending()
@@ -59,6 +61,7 @@ class RemindersViewModel @Inject constructor(
             val postponed = reminder.copy(triggerAt = reminder.triggerAt.plus(POSTPONE_DURATION))
             reminderRepository.save(postponed)
             reminderScheduler.schedule(postponed)
+            widgetRefresher.refresh()
         }
     }
 
@@ -67,6 +70,7 @@ class RemindersViewModel @Inject constructor(
             val reminder = reminderRepository.getById(id) ?: return@launch
             reminderRepository.save(reminder.copy(status = status))
             reminderScheduler.cancel(id)
+            widgetRefresher.refresh()
         }
     }
 }

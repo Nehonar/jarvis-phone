@@ -15,6 +15,8 @@ activityCompose = "1.10.1"
 navigation = "2.9.0"
 room = "2.7.1"
 datastore = "1.1.7"
+# Google Maven no accesible desde el entorno remoto (D-004): estable conocida.
+glance = "1.1.1"
 coroutines = "1.10.2"
 serializationJson = "1.9.0"
 junit = "4.13.2"
@@ -40,6 +42,7 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }

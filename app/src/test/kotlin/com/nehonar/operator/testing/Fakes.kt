@@ -16,6 +16,7 @@ import com.nehonar.operator.core.notifications.ReminderScheduler
 import com.nehonar.operator.core.security.ApiKeyStore
 import com.nehonar.operator.core.voice.SpeechToText
 import com.nehonar.operator.core.voice.SttEvent
+import com.nehonar.operator.core.widget.WidgetRefresher
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -164,6 +165,16 @@ class FakeReminderScheduler : ReminderScheduler {
     }
 
     override fun canScheduleExact(): Boolean = exactAlarmsEnabled
+}
+
+class FakeWidgetRefresher : WidgetRefresher {
+
+    var refreshCount = 0
+        private set
+
+    override suspend fun refresh() {
+        refreshCount++
+    }
 }
 
 class FakeApiKeyStore : ApiKeyStore {

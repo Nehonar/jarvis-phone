@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import com.nehonar.operator.feature.capture.CaptureScreen
 import com.nehonar.operator.feature.console.ConsoleScreen
 import com.nehonar.operator.feature.history.HistoryScreen
@@ -30,7 +31,9 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
                 onOpenReminders = { navController.navigate(RemindersRoute) },
             )
         }
-        composable<CaptureRoute> {
+        composable<CaptureRoute>(
+            deepLinks = listOf(navDeepLink<CaptureRoute>(basePath = "operator://capture")),
+        ) {
             CaptureScreen(
                 onBack = { navController.popBackStack() },
                 onCaptured = { voiceNoteId ->
