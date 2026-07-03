@@ -2,9 +2,11 @@ package com.nehonar.operator.feature.capture
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
+import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
 import com.nehonar.operator.core.voice.SpeechToText
 import com.nehonar.operator.core.voice.SttError
@@ -22,14 +24,16 @@ sealed interface CaptureUiState {
     data object Idle : CaptureUiState
     data class Listening(val partialText: String = "", val level: Float = 0f) : CaptureUiState
     data object Processing : CaptureUiState
-    data class Done(val noteId: String, val transcript: String) : CaptureUiState
+    data class Parsed(val voiceNoteId: String) : CaptureUiState
     data class Error(val message: String, val canRetry: Boolean = true) : CaptureUiState
 }
 
 @HiltViewModel
 class CaptureViewModel @Inject constructor(
     private val speechToText: SpeechToText,
-    private val repository: VoiceNoteRepository,
+    private val voiceNoteRepository: VoiceNoteRepository,
+    private val parsedIntentRepository: ParsedIntentRepository,
+    private val aiProvider: AIProvider,
     private val timeProvider: TimeProvider,
 ) : ViewModel() {
 
@@ -66,11 +70,9 @@ class CaptureViewModel @Inject constructor(
         )
     }
 
-    fun discardNote() {
-        val current = _uiState.value
-        if (current !is CaptureUiState.Done) return
-        viewModelScope.launch {
-            repository.delete(current.noteId)
+    /** Vuelve a Idle tras haber navegado a la revisión, para no re-disparar la navegación. */
+    fun onNavigatedToReview() {
+        if (_uiState.value is CaptureUiState.Parsed) {
             _uiState.value = CaptureUiState.Idle
         }
     }
@@ -108,6 +110,7 @@ class CaptureViewModel @Inject constructor(
             _uiState.value = CaptureUiState.Error(message = SttError.NO_MATCH.toOperatorMessage())
             return
         }
+        _uiState.value = CaptureUiState.Processing
         val note = VoiceNote(
             id = UUID.randomUUID().toString(),
             audioUri = null,
@@ -115,8 +118,11 @@ class CaptureViewModel @Inject constructor(
             createdAt = timeProvider.now(),
             status = VoiceNoteStatus.TRANSCRIBED,
         )
-        repository.save(note)
-        _uiState.value = CaptureUiState.Done(noteId = note.id, transcript = transcript)
+        voiceNoteRepository.save(note)
+        val parsedIntent = aiProvider.parseVoiceNote(transcript)
+        parsedIntentRepository.save(note.id, parsedIntent)
+        voiceNoteRepository.save(note.copy(status = VoiceNoteStatus.PARSED))
+        _uiState.value = CaptureUiState.Parsed(note.id)
     }
 }
 

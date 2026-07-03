@@ -9,6 +9,9 @@ data object HomeRoute
 data object CaptureRoute
 
 @Serializable
+data class ReviewRoute(val voiceNoteId: String)
+
+@Serializable
 data object HistoryRoute
 
 @Serializable

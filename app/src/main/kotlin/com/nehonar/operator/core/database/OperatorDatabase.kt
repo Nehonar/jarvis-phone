@@ -2,14 +2,17 @@ package com.nehonar.operator.core.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.nehonar.operator.core.database.dao.ParsedIntentDao
 import com.nehonar.operator.core.database.dao.VoiceNoteDao
+import com.nehonar.operator.core.database.entity.ParsedIntentEntity
 import com.nehonar.operator.core.database.entity.VoiceNoteEntity
 
 @Database(
-    entities = [VoiceNoteEntity::class],
-    version = 1,
+    entities = [VoiceNoteEntity::class, ParsedIntentEntity::class],
+    version = 2,
     exportSchema = true,
 )
 abstract class OperatorDatabase : RoomDatabase() {
     abstract fun voiceNoteDao(): VoiceNoteDao
+    abstract fun parsedIntentDao(): ParsedIntentDao
 }

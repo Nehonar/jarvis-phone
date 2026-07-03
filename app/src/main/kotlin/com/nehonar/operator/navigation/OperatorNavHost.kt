@@ -9,6 +9,7 @@ import com.nehonar.operator.feature.capture.CaptureScreen
 import com.nehonar.operator.feature.console.ConsoleScreen
 import com.nehonar.operator.feature.history.HistoryScreen
 import com.nehonar.operator.feature.home.HomeScreen
+import com.nehonar.operator.feature.review.ReviewScreen
 import com.nehonar.operator.feature.settings.SettingsScreen
 
 @Composable
@@ -28,7 +29,17 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
             )
         }
         composable<CaptureRoute> {
-            CaptureScreen(onBack = { navController.popBackStack() })
+            CaptureScreen(
+                onBack = { navController.popBackStack() },
+                onCaptured = { voiceNoteId ->
+                    navController.navigate(ReviewRoute(voiceNoteId)) {
+                        popUpTo(CaptureRoute) { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable<ReviewRoute> {
+            ReviewScreen(onDone = { navController.popBackStack() })
         }
         composable<HistoryRoute> {
             HistoryScreen(onBack = { navController.popBackStack() })

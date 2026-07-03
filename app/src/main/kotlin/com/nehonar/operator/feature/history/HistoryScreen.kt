@@ -70,6 +70,14 @@ fun HistoryScreen(
                                 color = OperatorColors.TextDim,
                                 modifier = Modifier.weight(1f),
                             )
+                            if (item.intentType != null) {
+                                Text(
+                                    text = item.intentType.name,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = OperatorColors.Cyan,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
                             Text(
                                 text = item.status.name,
                                 style = MaterialTheme.typography.bodySmall,

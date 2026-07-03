@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,10 +38,19 @@ import com.nehonar.operator.core.design.theme.OperatorColors
 @Composable
 fun CaptureScreen(
     onBack: () -> Unit,
+    onCaptured: (voiceNoteId: String) -> Unit,
     viewModel: CaptureViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    LaunchedEffect(state) {
+        val current = state
+        if (current is CaptureUiState.Parsed) {
+            onCaptured(current.voiceNoteId)
+            viewModel.onNavigatedToReview()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -88,11 +97,7 @@ fun CaptureScreen(
                         scaleX = scale
                         scaleY = scale
                     },
-                color = when (state) {
-                    is CaptureUiState.Error -> OperatorColors.Danger
-                    is CaptureUiState.Done -> OperatorColors.Cyan
-                    else -> OperatorColors.Phosphor
-                },
+                color = if (state is CaptureUiState.Error) OperatorColors.Danger else OperatorColors.Phosphor,
             )
         }
 
@@ -120,19 +125,13 @@ fun CaptureScreen(
                     StatusLine("MODE", "PROCESSING", valueColor = OperatorColors.Cyan)
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        text = "TRANSCRIBIENDO...",
+                        text = "INTERPRETANDO NOTA...",
                         style = MaterialTheme.typography.bodyMedium,
                         color = OperatorColors.TextDim,
                     )
                 }
-                is CaptureUiState.Done -> {
-                    StatusLine("MODE", "STORED", valueColor = OperatorColors.Cyan)
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = s.transcript,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = OperatorColors.TextPrimary,
-                    )
+                is CaptureUiState.Parsed -> {
+                    StatusLine("MODE", "PARSED", valueColor = OperatorColors.Cyan)
                 }
                 is CaptureUiState.Error -> {
                     StatusLine("MODE", "ERROR", valueColor = OperatorColors.Danger)
@@ -162,34 +161,12 @@ fun CaptureScreen(
                     accent = OperatorColors.TextDim,
                 )
             }
-            is CaptureUiState.Listening, CaptureUiState.Processing -> {
+            is CaptureUiState.Listening, CaptureUiState.Processing, is CaptureUiState.Parsed -> {
                 OperatorButton(
                     text = "CANCEL",
                     onClick = viewModel::cancelCapture,
                     modifier = Modifier.fillMaxWidth(),
                     accent = OperatorColors.Warning,
-                )
-            }
-            is CaptureUiState.Done -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OperatorButton(
-                        text = "NEW",
-                        onClick = onStartClick,
-                        modifier = Modifier.weight(1f),
-                    )
-                    OperatorButton(
-                        text = "DISCARD",
-                        onClick = viewModel::discardNote,
-                        modifier = Modifier.weight(1f),
-                        accent = OperatorColors.Danger,
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                OperatorButton(
-                    text = "BACK",
-                    onClick = onBack,
-                    modifier = Modifier.fillMaxWidth(),
-                    accent = OperatorColors.TextDim,
                 )
             }
             is CaptureUiState.Error -> {

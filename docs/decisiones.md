@@ -61,6 +61,21 @@ AGP, AndroidX y Compose BOM: **no verificables** desde el entorno remoto (Google
 bloqueado); se pinean versiones estables conocidas y, si CI falla en resolución, se
 ajustan con el mensaje de error como guía.
 
+## D-006 · Test de migración Room sin `MigrationTestHelper`
+
+**Fecha:** 2026-07-03 · **Tipo:** técnica
+
+`MigrationTestHelper` valida migraciones contra los JSON de schema exportados
+(`app/schemas/`), que no están commiteados (se generan al compilar; ver D-002: no se
+puede compilar desde el entorno remoto para generarlos y congelarlos aquí).
+
+En su lugar, `MigrationTest` construye una base de datos "sombra" (`OperatorDatabaseV1ForTest`,
+solo con `VoiceNoteEntity`, igual que la v1 real) en un fichero real, la puebla, la cierra,
+y la reabre con `OperatorDatabase` v2 aplicando `MIGRATION_1_2`. Room valida igualmente el
+hash de identidad del esquema resultante; el test falla si la migración no deja el esquema
+exacto que Room espera para v2. Cuando se pueda compilar localmente, recomendado migrar a
+`MigrationTestHelper` y commitear `app/schemas/`.
+
 ## D-005 · Test de DAO con Robolectric en lugar de instrumentado
 
 **Fecha:** 2026-07-02 · **Tipo:** técnica

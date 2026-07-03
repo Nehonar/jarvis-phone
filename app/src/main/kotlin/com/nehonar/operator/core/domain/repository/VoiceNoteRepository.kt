@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface VoiceNoteRepository {
     fun observeAll(): Flow<List<VoiceNote>>
+    suspend fun getById(id: String): VoiceNote?
     suspend fun save(note: VoiceNote)
     suspend fun delete(id: String)
 }

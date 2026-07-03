@@ -1,0 +1,102 @@
+package com.nehonar.operator.feature.review
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.nehonar.operator.core.ai.AIProvider
+import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
+import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+sealed interface ReviewUiState {
+    data object Loading : ReviewUiState
+    data class Content(
+        val transcript: String,
+        val intent: ParsedIntent,
+        val isEditing: Boolean = false,
+    ) : ReviewUiState
+    data object Done : ReviewUiState
+    data object NotFound : ReviewUiState
+}
+
+@HiltViewModel
+class ReviewViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val voiceNoteRepository: VoiceNoteRepository,
+    private val parsedIntentRepository: ParsedIntentRepository,
+    private val aiProvider: AIProvider,
+) : ViewModel() {
+
+    // Navigation type-safe expone cada campo de ReviewRoute como argumento plano
+    // bajo su nombre de propiedad; leerlo así evita depender del decodificador
+    // de rutas serializadas dentro del ViewModel y es más simple de testear.
+    private val voiceNoteId: String = checkNotNull(savedStateHandle["voiceNoteId"])
+
+    private val _uiState = MutableStateFlow<ReviewUiState>(ReviewUiState.Loading)
+    val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch { load() }
+    }
+
+    private suspend fun load() {
+        val note = voiceNoteRepository.getById(voiceNoteId)
+        val intent = parsedIntentRepository.getByVoiceNoteId(voiceNoteId)
+        _uiState.value = if (note != null && intent != null) {
+            ReviewUiState.Content(transcript = note.transcript, intent = intent)
+        } else {
+            ReviewUiState.NotFound
+        }
+    }
+
+    fun startEditing() {
+        val current = _uiState.value
+        if (current is ReviewUiState.Content) {
+            _uiState.value = current.copy(isEditing = true)
+        }
+    }
+
+    fun cancelEditing() {
+        val current = _uiState.value
+        if (current is ReviewUiState.Content) {
+            _uiState.value = current.copy(isEditing = false)
+        }
+    }
+
+    fun saveEditedText(newTranscript: String) {
+        val current = _uiState.value
+        if (current !is ReviewUiState.Content) return
+        val transcript = newTranscript.trim()
+        if (transcript.isEmpty()) return
+        viewModelScope.launch {
+            val note = voiceNoteRepository.getById(voiceNoteId) ?: return@launch
+            voiceNoteRepository.save(note.copy(transcript = transcript))
+            val reparsed = aiProvider.parseVoiceNote(transcript)
+            parsedIntentRepository.save(voiceNoteId, reparsed)
+            _uiState.value = ReviewUiState.Content(transcript = transcript, intent = reparsed)
+        }
+    }
+
+    fun accept() {
+        val current = _uiState.value
+        if (current !is ReviewUiState.Content) return
+        viewModelScope.launch {
+            parsedIntentRepository.save(voiceNoteId, current.intent.copy(needsConfirmation = false))
+            _uiState.value = ReviewUiState.Done
+        }
+    }
+
+    fun discard() {
+        viewModelScope.launch {
+            parsedIntentRepository.deleteByVoiceNoteId(voiceNoteId)
+            voiceNoteRepository.delete(voiceNoteId)
+            _uiState.value = ReviewUiState.Done
+        }
+    }
+}

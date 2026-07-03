@@ -17,6 +17,8 @@ class VoiceNoteRepositoryImpl @Inject constructor(
     override fun observeAll(): Flow<List<VoiceNote>> =
         dao.observeAll().map { notes -> notes.map(VoiceNoteEntity::toDomain) }
 
+    override suspend fun getById(id: String): VoiceNote? = dao.getById(id)?.toDomain()
+
     override suspend fun save(note: VoiceNote) {
         dao.upsert(note.toEntity())
     }
