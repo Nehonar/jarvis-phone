@@ -37,8 +37,8 @@ Fase 2 y seguirá sin programar nada hasta 13-B.
 
 ## Definición de terminado (checklist 13-A)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests: parser con `map_query`, mock "busca X cerca", regla en el prompt,
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28717866268)
+- [x] Tests: parser con `map_query`, mock "busca X cerca", regla en el prompt,
       mapper round-trip, migración 5→6
 - [ ] "Búscame un restaurante vegano cerca" → Review muestra NEARBY y el botón
       abre Google Maps con la búsqueda cerca de mí (dispositivo)
@@ -90,8 +90,8 @@ aviso" por tiempo del panel DAY y el widget, que siguen siendo solo temporales.
 
 ### Definición de terminado (checklist 13-B)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests: migración 6→7, mappers de `SavedPlace`/`PlaceReminder`, extracción
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28718327287)
+- [x] Tests: migración 6→7, mappers de `SavedPlace`/`PlaceReminder`, extracción
       del lugar en el mock, `accept()` crea el `PlaceReminder` y registra el
       geofence, `PlacesViewModel`
 - [ ] Guardar "casa" con la ubicación actual desde PLACES (dispositivo)
