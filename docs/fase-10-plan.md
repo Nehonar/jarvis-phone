@@ -49,8 +49,8 @@ que borres uno), caducidad automática, ni búsqueda.
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests: parser con `memory_facts`, mapper round-trip, migración 4→5,
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28708864811)
+- [x] Tests: parser con `memory_facts`, mapper round-trip, migración 4→5,
       `accept()` guarda hechos, `MemoryViewModel`, bloque de memoria del
       prompt, mock "apunta que"
 - [ ] "Apunta que mi talla de pie es el 42" → panel MEMORY en Review →
