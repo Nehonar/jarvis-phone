@@ -3,6 +3,8 @@ package com.nehonar.operator.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.calendar.CalendarEvent
+import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.common.formatOperatorDate
 import com.nehonar.operator.core.common.formatOperatorDateTime
@@ -17,10 +19,12 @@ import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 data class DayReminder(
     val timeLabel: String,
@@ -41,6 +45,14 @@ data class HomeUiState(
     val awaitingReview: Int = 0,
     val openActions: Int = 0,
     val feed: List<FeedItem> = emptyList(),
+    val calendarConnected: Boolean = false,
+    val nextEventLabel: String? = null,
+    val eventsToday: Int = 0,
+)
+
+private data class AgendaSnapshot(
+    val hasPermission: Boolean = false,
+    val events: List<CalendarEvent> = emptyList(),
 )
 
 private const val FEED_MAX_ITEMS = 4
@@ -52,17 +64,35 @@ class HomeViewModel @Inject constructor(
     parsedIntentRepository: ParsedIntentRepository,
     reminderRepository: ReminderRepository,
     checklistRepository: ChecklistRepository,
+    private val calendarRepository: CalendarRepository,
 ) : ViewModel() {
 
     private val dateLabel = formatOperatorDate(timeProvider.today())
+
+    private val agenda = MutableStateFlow(AgendaSnapshot())
+
+    init {
+        refreshAgenda()
+    }
+
+    /** ON_RESUME y tras conceder el permiso: los eventos cambian fuera de la app. */
+    fun refreshAgenda() {
+        viewModelScope.launch {
+            agenda.value = AgendaSnapshot(
+                hasPermission = calendarRepository.hasPermission(),
+                events = calendarRepository.getEventsForToday(),
+            )
+        }
+    }
 
     val uiState: StateFlow<HomeUiState> = combine(
         voiceNoteRepository.observeAll(),
         parsedIntentRepository.observeAll(),
         reminderRepository.observePending(),
         checklistRepository.observeAll(),
-    ) { notes, intents, reminders, checklist ->
-        buildState(notes, intents, reminders, checklist)
+        agenda,
+    ) { notes, intents, reminders, checklist, agendaSnapshot ->
+        buildState(notes, intents, reminders, checklist, agendaSnapshot)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -74,6 +104,7 @@ class HomeViewModel @Inject constructor(
         intents: Map<String, ParsedIntent>,
         reminders: List<Reminder>,
         checklist: List<ChecklistItem>,
+        agendaSnapshot: AgendaSnapshot,
     ): HomeUiState {
         val zone = ZoneId.systemDefault()
         // observePending ya viene ordenado por instante ascendente.
@@ -95,6 +126,10 @@ class HomeViewModel @Inject constructor(
                     text = note.transcript,
                 )
             }
+        val now = timeProvider.now()
+        val nextEvent = agendaSnapshot.events
+            .filter { !it.allDay && it.startAt.isAfter(now) }
+            .minByOrNull { it.startAt }
         return HomeUiState(
             dateLabel = dateLabel,
             noteCount = notes.size,
@@ -103,6 +138,9 @@ class HomeViewModel @Inject constructor(
             awaitingReview = intents.values.count { it.needsConfirmation },
             openActions = checklist.count { !it.done },
             feed = feed,
+            calendarConnected = agendaSnapshot.hasPermission,
+            nextEventLabel = nextEvent?.let { "${formatOperatorTime(it.startAt, zone)} ${it.title}" },
+            eventsToday = agendaSnapshot.events.size,
         )
     }
 }

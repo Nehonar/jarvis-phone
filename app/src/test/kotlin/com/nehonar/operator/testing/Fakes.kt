@@ -5,6 +5,8 @@ import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.ai.AIProviderType
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.calendar.CalendarEvent
+import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.domain.model.ChecklistItem
 import com.nehonar.operator.core.domain.model.Reminder
@@ -199,6 +201,17 @@ class FakeChecklistRepository : ChecklistRepository {
     override suspend fun deleteForVoiceNote(voiceNoteId: String) {
         items.update { map -> map.filterValues { it.voiceNoteId != voiceNoteId } }
     }
+}
+
+class FakeCalendarRepository(
+    var permission: Boolean = false,
+    var events: List<CalendarEvent> = emptyList(),
+) : CalendarRepository {
+
+    override fun hasPermission(): Boolean = permission
+
+    override suspend fun getEventsForToday(): List<CalendarEvent> =
+        if (permission) events.sortedBy { it.startAt } else emptyList()
 }
 
 class FakeWidgetRefresher : WidgetRefresher {

@@ -1,5 +1,8 @@
 package com.nehonar.operator.feature.home
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,12 +15,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nehonar.operator.core.design.components.BlinkingCursor
 import com.nehonar.operator.core.design.components.ConsolePanel
@@ -36,6 +43,20 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { viewModel.refreshAgenda() }
+
+    // La agenda cambia fuera de la app: se relee cada vez que Home vuelve a primer plano.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshAgenda()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Column(
         Modifier
@@ -99,6 +120,22 @@ fun HomeScreen(
                 state.awaitingReview.toString(),
                 valueColor = if (state.awaitingReview > 0) OperatorColors.Warning else OperatorColors.TextPrimary,
             )
+            Spacer(Modifier.height(6.dp))
+            if (state.calendarConnected) {
+                StatusLine(
+                    "AGENDA",
+                    state.nextEventLabel
+                        ?: if (state.eventsToday > 0) "SIN MÁS EVENTOS HOY" else "SIN EVENTOS HOY",
+                    valueColor = if (state.nextEventLabel != null) OperatorColors.Cyan else OperatorColors.TextDim,
+                )
+            } else {
+                OperatorButton(
+                    text = "CONECTAR AGENDA",
+                    onClick = { calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
+                    modifier = Modifier.fillMaxWidth(),
+                    accent = OperatorColors.TextDim,
+                )
+            }
         }
 
         Spacer(Modifier.height(16.dp))

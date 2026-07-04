@@ -9,8 +9,20 @@ object PromptBuilder {
     // Mismos campos que ParsedIntent (ver core/ai/ParsedIntent.kt), en snake_case.
     // Incluye date/time desde la Fase 4 (recordatorios), para poder programar avisos
     // reales; el resto (personas/lugar) sigue fuera hasta que haga falta.
-    fun systemPrompt(today: LocalDate): String {
+    fun systemPrompt(today: LocalDate, agenda: List<String> = emptyList()): String {
         val dayName = today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es")).lowercase()
+        val agendaBlock = if (agenda.isEmpty()) {
+            ""
+        } else {
+            """
+
+        Agenda de hoy del usuario (hora local):
+        ${agenda.joinToString("\n        ") { "- $it" }}
+        Si la nota se refiere a uno de estos eventos ("la reunión", "la cita"…),
+        usa su hora real para resolver "date"/"time" y las antelaciones — en ese
+        caso la hora NO es ambigua y no debes preguntar la franja.
+            """.trimEnd()
+        }
         return """
         Eres el intérprete de un operador personal privado. Conviertes una nota de voz
         transcrita en una intención estructurada. Respondes ÚNICAMENTE con un objeto
@@ -51,6 +63,7 @@ object PromptBuilder {
         AVISO, no la del evento — réstale N minutos a la hora del evento (reunión a
         las 19:00, avisar 5 min antes ⇒ "time": "18:55"). Si no conoces la hora del
         evento, pregúntala. La regla de ambigüedad también aplica a la hora del evento.
+$agendaBlock
 
         Mensajes de recordatorio ("reminders[].message"): deben ser autocontenidos y
         con hora absoluta, porque se muestran también en listas y en el widget antes

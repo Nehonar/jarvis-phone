@@ -8,6 +8,8 @@ import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
+import com.nehonar.operator.core.calendar.CalendarEvent
+import com.nehonar.operator.testing.FakeCalendarRepository
 import com.nehonar.operator.testing.FakeChecklistRepository
 import com.nehonar.operator.testing.FakeParsedIntentRepository
 import com.nehonar.operator.testing.FakeReminderRepository
@@ -38,6 +40,7 @@ class HomeViewModelTest {
     private val parsedIntentRepository = FakeParsedIntentRepository()
     private val reminderRepository = FakeReminderRepository()
     private val checklistRepository = FakeChecklistRepository()
+    private val calendarRepository = FakeCalendarRepository()
 
     private fun viewModel() = HomeViewModel(
         timeProvider = timeProvider,
@@ -45,6 +48,7 @@ class HomeViewModelTest {
         parsedIntentRepository = parsedIntentRepository,
         reminderRepository = reminderRepository,
         checklistRepository = checklistRepository,
+        calendarRepository = calendarRepository,
     )
 
     private fun TestScope.collectState(vm: HomeViewModel) {
@@ -122,6 +126,57 @@ class HomeViewModelTest {
         assertEquals(IntentType.SHOPPING.name, feed.first().tag)
         assertEquals(VoiceNoteStatus.TRANSCRIBED.name, feed.last().tag)
     }
+
+    @Test
+    fun `sin permiso de calendario la agenda aparece desconectada`() = runTest {
+        val vm = viewModel()
+        collectState(vm)
+
+        val state = vm.uiState.value
+        assertEquals(false, state.calendarConnected)
+        assertNull(state.nextEventLabel)
+    }
+
+    @Test
+    fun `con permiso muestra el proximo evento futuro de hoy`() = runTest {
+        calendarRepository.permission = true
+        calendarRepository.events = listOf(
+            // now() del FixedTimeProvider = 10:15 UTC: el de las 09:00 ya pasó.
+            event("pasado", "2026-07-02T09:00:00Z", "Desayuno"),
+            event("proximo", "2026-07-02T11:00:00Z", "Reunión"),
+            event("luego", "2026-07-02T15:00:00Z", "Dentista"),
+        )
+        val vm = viewModel()
+        vm.refreshAgenda()
+        collectState(vm)
+
+        val state = vm.uiState.value
+        assertEquals(true, state.calendarConnected)
+        assertEquals("11:00 Reunión", state.nextEventLabel)
+        assertEquals(3, state.eventsToday)
+    }
+
+    @Test
+    fun `con permiso y sin eventos futuros la etiqueta queda vacia`() = runTest {
+        calendarRepository.permission = true
+        calendarRepository.events = listOf(event("pasado", "2026-07-02T09:00:00Z", "Desayuno"))
+        val vm = viewModel()
+        vm.refreshAgenda()
+        collectState(vm)
+
+        val state = vm.uiState.value
+        assertEquals(true, state.calendarConnected)
+        assertNull(state.nextEventLabel)
+        assertEquals(1, state.eventsToday)
+    }
+
+    private fun event(id: String, at: String, title: String) = CalendarEvent(
+        id = id,
+        title = title,
+        startAt = Instant.parse(at),
+        endAt = Instant.parse(at).plusSeconds(3600),
+        allDay = false,
+    )
 
     private fun reminder(id: String, at: String, message: String) = Reminder(
         id = id,

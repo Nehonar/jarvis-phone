@@ -2,8 +2,11 @@ package com.nehonar.operator.core.ai.remote
 
 import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
+import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
+import com.nehonar.operator.core.common.formatOperatorTime
 import java.io.IOException
+import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
@@ -22,6 +25,7 @@ class RemoteAIProvider(
     private val config: RemoteAIProviderConfig,
     private val httpClient: OkHttpClient,
     private val timeProvider: TimeProvider,
+    private val calendarRepository: CalendarRepository,
 ) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult = withContext(Dispatchers.IO) {
@@ -29,12 +33,20 @@ class RemoteAIProvider(
             return@withContext AIParseResult.Failure("Falta configurar la clave de ${config.displayName}")
         }
 
+        val zone = ZoneId.systemDefault()
+        val agenda = calendarRepository.getEventsForToday().map { event ->
+            if (event.allDay) "(todo el día) ${event.title}"
+            else "${formatOperatorTime(event.startAt, zone)} ${event.title}"
+        }
         val requestJson = json.encodeToString(
             ChatCompletionRequest.serializer(),
             ChatCompletionRequest(
                 model = config.model,
                 messages = listOf(
-                    ChatMessage(role = "system", content = PromptBuilder.systemPrompt(timeProvider.today())),
+                    ChatMessage(
+                        role = "system",
+                        content = PromptBuilder.systemPrompt(timeProvider.today(), agenda),
+                    ),
                     ChatMessage(role = "user", content = PromptBuilder.buildUserMessage(transcript)),
                 ),
             ),
