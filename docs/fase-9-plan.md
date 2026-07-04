@@ -53,8 +53,8 @@ calendarios concretos (se leen todos los visibles).
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests: bloque de agenda en `PromptBuilder`, `HomeViewModel` (permiso,
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28695502327)
+- [x] Tests: bloque de agenda en `PromptBuilder`, `HomeViewModel` (permiso,
       próximo evento, contador)
 - [ ] CONECTAR AGENDA pide el permiso y tras concederlo aparece el próximo
       evento en DAY (dispositivo)
