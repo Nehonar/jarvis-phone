@@ -199,3 +199,24 @@ atrás), el scope se cancelaba antes de repintar el widget. Resolución:
 - Bug relacionado corregido: borrar una nota en LOG dejaba sus recordatorios
   huérfanos con la alarma viva (y visibles en el widget). Ahora el borrado es
   en cascada: cancela la alarma, borra los recordatorios y refresca el widget.
+
+## D-013 · Hora ambigua: nunca se adivina la franja, se pregunta
+
+**Fecha:** 2026-07-04 · **Origen:** usuario (fricción real) · **Tipo:** regla de producto
+
+El usuario detectó que al decir una hora sin franja ("a las 8") el asistente
+nunca preguntaba si era de la mañana o de la tarde y la resolvía siempre por
+la tarde. Regla nueva, aplicada tanto en `PromptBuilder` (proveedor real) como
+en `MockAIProvider`:
+
+- Hora entre la 1 y las 11 **sin** franja explícita ni contexto que la
+  resuelva ⇒ `time` queda en `null` y se añade `clarifying_question`
+  (field `time_of_day`, "¿De la mañana o de la tarde?"). El bucle de
+  aclaración conversacional (D-010) hace que la pregunta se responda por voz
+  en la misma sesión.
+- No son ambiguas: formato 24h ("14:00", "a las 19"), franja explícita
+  ("8 de la mañana", "10 de la noche") o contexto claro ("para cenar a las 9").
+- Matiz de idioma cubierto con test: "mañana a las 9" indica el **día**, no la
+  franja (sigue siendo ambigua); y "hoy a las 8 **de la mañana**" no debe
+  interpretarse como fecha de mañana (bug del mock corregido: la franja se
+  elimina antes de extraer la fecha).

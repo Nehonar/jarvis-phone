@@ -28,13 +28,17 @@ class MockAIProvider @Inject constructor(
         }
 
         val resolvedDate = extractDate(lower, timeProvider.today())
-        val resolvedTime = extractTime(lower)
+        val timeExtraction = extractTime(lower)
+        val resolvedTime = (timeExtraction as? TimeExtraction.Resolved)?.time
         val hasDepartureTime = DEPARTURE_REGEX.containsMatchIn(lower)
 
         val intentType = classify(lower)
         val clarifyingQuestions = buildList {
-            if (intentType == IntentType.REMINDER && resolvedTime == null) {
+            if (intentType == IntentType.REMINDER && timeExtraction is TimeExtraction.None) {
                 add(ClarifyingQuestion("time", "¿A qué hora?"))
+            }
+            if (intentType == IntentType.REMINDER && timeExtraction is TimeExtraction.Ambiguous) {
+                add(ClarifyingQuestion("time_of_day", "¿De la mañana o de la tarde?"))
             }
             if (intentType == IntentType.PREPARE_EVENT && !hasDepartureTime) {
                 add(ClarifyingQuestion("departure_time", "¿A qué hora sales de casa?"))
@@ -118,30 +122,47 @@ class MockAIProvider @Inject constructor(
     }
 
     /** Solo entiende "hoy"/"mañana"; no resuelve días de la semana ni fechas explícitas. */
-    private fun extractDate(lower: String, today: LocalDate): String? = when {
-        wordBoundaryRegex("mañana").containsMatchIn(lower) -> today.plusDays(1).toString()
-        wordBoundaryRegex("hoy").containsMatchIn(lower) -> today.toString()
-        else -> null
+    private fun extractDate(lower: String, today: LocalDate): String? {
+        // "de/por la mañana" es franja horaria, no fecha: se quita antes de buscar "mañana".
+        val withoutTimeOfDay = TIME_OF_DAY_MORNING_REGEX.replace(lower, " ")
+        return when {
+            wordBoundaryRegex("mañana").containsMatchIn(withoutTimeOfDay) -> today.plusDays(1).toString()
+            wordBoundaryRegex("hoy").containsMatchIn(withoutTimeOfDay) -> today.toString()
+            else -> null
+        }
+    }
+
+    private sealed interface TimeExtraction {
+        /** La nota no menciona ninguna hora. */
+        data object None : TimeExtraction
+
+        /** Hora 1-11 sin franja (mañana/tarde/noche): no se adivina, se pregunta (D-013). */
+        data object Ambiguous : TimeExtraction
+
+        data class Resolved(val time: String) : TimeExtraction
     }
 
     /**
      * Solo entiende horas en dígitos ("a las 8", "a las 14:00", "8:30"); no resuelve
      * números escritos en palabras ("las dos") — limitación aceptada del mock (ver
-     * riesgo 3 en docs/fase-4-plan.md). Reconoce "de la tarde/mediodía/noche" para
-     * pasar a formato 24h cuando la hora está en el rango 1-11.
+     * riesgo 3 en docs/fase-4-plan.md). Reconoce la franja ("de la mañana", "de la
+     * tarde"…) para pasar a 24h; sin franja, una hora 1-11 es ambigua y no se resuelve.
      */
-    private fun extractTime(lower: String): String? {
-        val match = TIME_REGEX.find(lower) ?: return null
+    private fun extractTime(lower: String): TimeExtraction {
+        val match = TIME_REGEX.find(lower) ?: return TimeExtraction.None
         val hourStr = match.groupValues[1].ifEmpty { match.groupValues[3] }
         val minuteStr = match.groupValues[2].ifEmpty { match.groupValues[4] }
-        var hour = hourStr.toIntOrNull() ?: return null
+        var hour = hourStr.toIntOrNull() ?: return TimeExtraction.None
         val minute = minuteStr.toIntOrNull() ?: 0
-        if (hour !in 0..23 || minute !in 0..59) return null
-        val tail = lower.substring((match.range.last + 1).coerceAtMost(lower.length)).take(20)
-        if (hour in 1..11 && PM_MARKERS.any { tail.contains(it) }) {
-            hour += 12
+        if (hour !in 0..23 || minute !in 0..59) return TimeExtraction.None
+        if (hour in 1..11) {
+            val tail = lower.substring((match.range.last + 1).coerceAtMost(lower.length)).take(24)
+            when {
+                PM_MARKERS.any { tail.contains(it) } -> hour += 12
+                AM_MARKERS.none { tail.contains(it) } -> return TimeExtraction.Ambiguous
+            }
         }
-        return "%02d:%02d".format(hour, minute)
+        return TimeExtraction.Resolved("%02d:%02d".format(hour, minute))
     }
 
     // Tono: mayordomo distinguido, seco, servicial y con una pizca de sarcasmo.
@@ -178,6 +199,13 @@ class MockAIProvider @Inject constructor(
         val PREPARE_EVENT_TRIGGERS = listOf("oficina", "gimnasio", "viaje")
         val MOOD_TRIGGERS = listOf("cansado", "cansada", "sin energía", "sin energia", "baja energía", "baja energia")
         val PM_MARKERS = listOf("mediodía", "mediodia", "tarde", "noche")
+        // Frase completa: "mañana" a secas tras la hora es el día siguiente, no la franja.
+        val AM_MARKERS = listOf(
+            "de la mañana", "de la manana",
+            "por la mañana", "por la manana",
+            "de la madrugada",
+        )
+        val TIME_OF_DAY_MORNING_REGEX = Regex("""\b(de|por) la (mañana|manana|madrugada)\b""")
 
         val STOP_WORDS_REGEX = Regex(
             "\\b(y al |y luego |luego |mañana |también |tambien )\\b",

@@ -61,8 +61,8 @@ class MockAIProviderTest {
     }
 
     @Test
-    fun `recuerdame con hora explicita no genera pregunta y resuelve time`() = runTest {
-        val result = parse("recuérdame llamar al médico a las 9")
+    fun `recuerdame con hora y franja explicitas no genera pregunta y resuelve time`() = runTest {
+        val result = parse("recuérdame llamar al médico a las 9 de la mañana")
 
         assertEquals(IntentType.REMINDER, result.intentType)
         assertTrue(result.clarifyingQuestions.isEmpty())
@@ -70,12 +70,41 @@ class MockAIProviderTest {
     }
 
     @Test
-    fun `avisame mañana a las 9 resuelve fecha y hora`() = runTest {
+    fun `hora ambigua sin franja no se resuelve y pregunta mañana o tarde`() = runTest {
+        val result = parse("recuérdame llamar al médico a las 8")
+
+        assertEquals(IntentType.REMINDER, result.intentType)
+        assertNull(result.time)
+        assertEquals("time_of_day", result.clarifyingQuestions.single().field)
+        assertTrue(result.assistantResponse.startsWith("Aún me falta un dato, señor"))
+    }
+
+    @Test
+    fun `mañana a las 9 indica el dia pero la hora sigue siendo ambigua`() = runTest {
         val result = parse("avísame mañana a las 9 para llamar al médico")
 
         assertEquals(IntentType.REMINDER, result.intentType)
         assertEquals("2026-07-03", result.date)
+        assertNull(result.time)
+        assertEquals("time_of_day", result.clarifyingQuestions.single().field)
+    }
+
+    @Test
+    fun `avisame mañana a las 9 de la mañana resuelve fecha y hora`() = runTest {
+        val result = parse("avísame mañana a las 9 de la mañana para llamar al médico")
+
+        assertEquals(IntentType.REMINDER, result.intentType)
+        assertEquals("2026-07-03", result.date)
         assertEquals("09:00", result.time)
+        assertTrue(result.clarifyingQuestions.isEmpty())
+    }
+
+    @Test
+    fun `hoy a las 8 de la mañana no confunde la franja con el dia siguiente`() = runTest {
+        val result = parse("recuérdame hoy a las 8 de la mañana ir al médico")
+
+        assertEquals("2026-07-02", result.date)
+        assertEquals("08:00", result.time)
         assertTrue(result.clarifyingQuestions.isEmpty())
     }
 
@@ -96,7 +125,7 @@ class MockAIProviderTest {
 
     @Test
     fun `sin mencion de dia la fecha queda sin resolver`() = runTest {
-        val result = parse("recuérdame a las 9 llamar al médico")
+        val result = parse("recuérdame a las 9 de la mañana llamar al médico")
 
         assertNull(result.date)
         assertEquals("09:00", result.time)
