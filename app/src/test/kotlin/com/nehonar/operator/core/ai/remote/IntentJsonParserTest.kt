@@ -170,6 +170,33 @@ class IntentJsonParserTest {
     }
 
     @Test
+    fun `map_query se parsea para NEARBY_SEARCH`() {
+        val json = """
+            {"intent_type": "NEARBY_SEARCH", "assistant_response": "ok",
+             "map_query": "  restaurante vegano  "}
+        """.trimIndent()
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertEquals(IntentType.NEARBY_SEARCH, intent.intentType)
+        assertEquals("restaurante vegano", intent.mapQuery)
+    }
+
+    @Test
+    fun `map_query en blanco o ausente queda null`() {
+        val blank = IntentJsonParser.parse(
+            """{"intent_type": "GENERAL_NOTE", "assistant_response": "ok", "map_query": "   "}""",
+        )
+        val absent = IntentJsonParser.parse(
+            """{"intent_type": "SHOPPING", "assistant_response": "ok"}""",
+        )
+
+        assertNull(blank?.mapQuery)
+        assertNull(absent?.mapQuery)
+    }
+
+    @Test
     fun `sin memory_facts la lista queda vacia`() {
         val json = """{"intent_type": "SHOPPING", "assistant_response": "ok"}"""
 

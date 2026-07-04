@@ -28,12 +28,15 @@ class MockAIProvider @Inject constructor(
         }
 
         val memoryFacts = extractMemoryFacts(lower, text)
+        val mapQuery = extractMapQuery(lower, text)
         val resolvedDate = extractDate(lower, timeProvider.today())
         val timeExtraction = extractTime(lower)
         val resolvedTime = (timeExtraction as? TimeExtraction.Resolved)?.time
         val hasDepartureTime = DEPARTURE_REGEX.containsMatchIn(lower)
 
-        val intentType = classify(lower)
+        // Una búsqueda cercana manda sobre el resto (p. ej. "búscame" contiene "avísame"... no,
+        // pero sí puede solaparse con otros triggers): si hay map_query, es NEARBY_SEARCH.
+        val intentType = if (mapQuery != null) IntentType.NEARBY_SEARCH else classify(lower)
         val clarifyingQuestions = buildList {
             if (intentType == IntentType.REMINDER && timeExtraction is TimeExtraction.None) {
                 add(ClarifyingQuestion("time", "¿A qué hora?"))
@@ -82,8 +85,23 @@ class MockAIProvider @Inject constructor(
                 date = resolvedDate,
                 time = resolvedTime,
                 memoryFacts = memoryFacts,
+                mapQuery = mapQuery,
             ),
         )
+    }
+
+    /**
+     * "búscame un restaurante vegano cerca" ⇒ consulta "restaurante vegano". Extrae el
+     * texto tras el disparador de búsqueda, quitando artículos iniciales y la coletilla
+     * de cercanía ("cerca", "cerca de mí"…). Sin disparador, no es una búsqueda.
+     */
+    private fun extractMapQuery(lower: String, original: String): String? {
+        val matchEnd = SEARCH_TRIGGERS.firstNotNullOfOrNull { wordBoundaryRegex(it).find(lower)?.range?.last }
+            ?: return null
+        var rest = original.substring((matchEnd + 1).coerceAtMost(original.length)).trim()
+        rest = NEARNESS_REGEX.replace(rest, " ").trim().trim('.', '!', '?', ',')
+        rest = LEADING_ARTICLE_REGEX.replace(rest, "").trim()
+        return rest.takeIf { it.isNotEmpty() }
     }
 
     /** "apunta que X" / "recuerda que X" ⇒ hecho memorable con el texto tal cual. */
@@ -196,6 +214,7 @@ class MockAIProvider @Inject constructor(
             IntentType.MOOD_OR_ENERGY -> "Estado anímico registrado, señor. Ajustaré mis expectativas."
             IntentType.IDEA_CAPTURE -> "Idea guardada, señor. Confío en que mejore con el tiempo."
             IntentType.DAILY_CONSTRAINT -> "Restricción registrada, señor."
+            IntentType.NEARBY_SEARCH -> "Búsqueda preparada, señor. Le abriré el mapa cuando lo desee."
             IntentType.GENERAL_NOTE -> "Nota guardada, señor."
             IntentType.UNKNOWN -> "No he identificado ninguna acción clara, señor. Quizás con más detalle."
         }
@@ -209,6 +228,7 @@ class MockAIProvider @Inject constructor(
         val CALL_TRIGGERS = listOf("llamar a", "avisar a")
         val REMINDER_TRIGGERS = listOf("recuérdame", "recuerdame", "avísame", "avisame", "acuérdame", "acuerdame")
         val MEMORY_TRIGGERS = listOf("apunta que", "recuerda que")
+        val SEARCH_TRIGGERS = listOf("búscame", "buscame", "busca", "encuéntrame", "encuentrame")
         val PREPARE_EVENT_TRIGGERS = listOf("oficina", "gimnasio", "viaje")
         val MOOD_TRIGGERS = listOf("cansado", "cansada", "sin energía", "sin energia", "baja energía", "baja energia")
         val PM_MARKERS = listOf("mediodía", "mediodia", "tarde", "noche")
@@ -228,5 +248,9 @@ class MockAIProvider @Inject constructor(
         val TIME_REGEX = Regex("""\ba las (\d{1,2})(?::(\d{2}))?\b|\b(\d{1,2}):(\d{2})\b""")
         // Detecta que ya se indicó la hora de salida: "salgo/salir/sales ... 8"
         val DEPARTURE_REGEX = Regex("""\bsal(go|ir|es)\b[^.]{0,20}\d{1,2}""")
+        // Coletilla de cercanía que se quita de la consulta del mapa.
+        val NEARNESS_REGEX = Regex("""\bcerca( de (mí|mi|aquí|aqui))?\b""")
+        // Artículo indeterminado inicial: "un restaurante" -> "restaurante".
+        val LEADING_ARTICLE_REGEX = Regex("""^(un|una|unos|unas)\s+""")
     }
 }

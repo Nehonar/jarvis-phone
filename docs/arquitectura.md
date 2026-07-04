@@ -300,6 +300,7 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 8 | Consola visual (nodos/partículas reactivos) | **Implementada** → [`fase-8-plan.md`](fase-8-plan.md) |
 | 9 | Calendario (lectura + agenda en el prompt) | **Implementada** → [`fase-9-plan.md`](fase-9-plan.md) |
 | 10 | Memoria (hechos personales persistentes) | **Implementada** → [`fase-10-plan.md`](fase-10-plan.md) |
-| 11–14 | Salud, email RO, ubicación, backend | — |
+| 13-A | Ubicación: búsqueda cercana vía Google Maps | **Implementada** → [`fase-13-plan.md`](fase-13-plan.md) |
+| 11, 12, 13-B, 14 | Salud, email RO, geofencing, backend | — |
 
 Regla de oro: **cada fase termina con una app usable y compilable.**

@@ -44,6 +44,22 @@ class ParsedIntentMapperTest {
     }
 
     @Test
+    fun `entity a dominio y vuelta conserva mapQuery`() {
+        val intent = ParsedIntent(
+            intentType = IntentType.NEARBY_SEARCH,
+            confidence = 0.8f,
+            title = "NEARBY SEARCH",
+            summary = "busca vegano",
+            assistantResponse = "Búsqueda preparada, señor.",
+            mapQuery = "restaurante vegano",
+        )
+        val roundTripped = intent.toEntity("n1", Instant.ofEpochMilli(1_000)).toDomain()
+
+        assertEquals("restaurante vegano", roundTripped.mapQuery)
+        assertEquals(intent.copy(), roundTripped)
+    }
+
+    @Test
     fun `date y time nulos se conservan como null`() {
         val intent = ParsedIntent(
             intentType = IntentType.SHOPPING,
@@ -56,5 +72,6 @@ class ParsedIntentMapperTest {
 
         assertNull(roundTripped.date)
         assertNull(roundTripped.time)
+        assertNull(roundTripped.mapQuery)
     }
 }

@@ -1,7 +1,10 @@
 package com.nehonar.operator.feature.review
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -224,6 +227,25 @@ private fun ReviewContent(
         }
     }
 
+    intent.mapQuery?.let { query ->
+        val context = LocalContext.current
+        Spacer(Modifier.height(12.dp))
+        ConsolePanel(title = "NEARBY", modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = query,
+                style = MaterialTheme.typography.bodyMedium,
+                color = OperatorColors.Cyan,
+            )
+            Spacer(Modifier.height(10.dp))
+            OperatorButton(
+                text = "ABRIR EN MAPS",
+                onClick = { context.startActivity(nearbySearchIntent(context, query)) },
+                modifier = Modifier.fillMaxWidth(),
+                accent = OperatorColors.Cyan,
+            )
+        }
+    }
+
     Spacer(Modifier.height(16.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         OperatorButton(
@@ -244,6 +266,19 @@ private fun ReviewContent(
             accent = OperatorColors.Danger,
         )
     }
+}
+
+// Intent geo: la app de mapas (Google Maps y otras) resuelve la posición actual y
+// busca `query` cerca. Si no hay app que resuelva geo:, cae a la URL web de Maps.
+private fun nearbySearchIntent(context: Context, query: String): Intent {
+    val encoded = Uri.encode(query)
+    val geoIntent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=$encoded"))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    if (geoIntent.resolveActivity(context.packageManager) != null) return geoIntent
+    return Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("https://www.google.com/maps/search/?api=1&query=$encoded"),
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 }
 
 @Composable

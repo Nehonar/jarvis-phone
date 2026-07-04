@@ -1,6 +1,7 @@
 package com.nehonar.operator.core.database
 
 import android.content.Context
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -11,6 +12,7 @@ import androidx.room.RoomDatabase
 import androidx.room.Upsert
 import androidx.test.core.app.ApplicationProvider
 import com.nehonar.operator.core.database.dao.ChecklistDao
+import com.nehonar.operator.core.database.dao.MemoryDao
 import com.nehonar.operator.core.database.dao.ReminderDao
 import com.nehonar.operator.core.database.dao.VoiceNoteDao
 import com.nehonar.operator.core.database.entity.ChecklistItemEntity
@@ -113,6 +115,42 @@ abstract class OperatorDatabaseV4ForTest : RoomDatabase() {
     abstract fun checklistDao(): ChecklistDao
 }
 
+/** Copia del esquema de `parsed_intents` en v5 (con memoryFactsJson, sin mapQuery). */
+@Entity(tableName = "parsed_intents")
+data class ParsedIntentEntityV5ForTest(
+    @PrimaryKey val voiceNoteId: String,
+    val intentType: String,
+    val confidence: Float,
+    val title: String,
+    val summary: String,
+    val actionsJson: String,
+    val remindersJson: String,
+    val clarifyingQuestionsJson: String,
+    val assistantResponse: String,
+    val needsConfirmation: Boolean,
+    val createdAtEpochMillis: Long,
+    val date: String? = null,
+    val time: String? = null,
+    @ColumnInfo(defaultValue = "'[]'")
+    val memoryFactsJson: String = "[]",
+)
+
+/** Base "sombra" con el esquema v5 (antes de mapQuery). */
+@Database(
+    entities = [
+        VoiceNoteEntity::class,
+        ParsedIntentEntityV5ForTest::class,
+        ReminderEntity::class,
+        ChecklistItemEntity::class,
+        MemoryFactEntity::class,
+    ],
+    version = 5,
+    exportSchema = false,
+)
+abstract class OperatorDatabaseV5ForTest : RoomDatabase() {
+    abstract fun memoryDao(): MemoryDao
+}
+
 /**
  * Verifica las migraciones sin depender de los JSON de schema exportados
  * (ver docs/decisiones.md D-006): se construye un fichero real con el esquema
@@ -154,9 +192,9 @@ class MigrationTest {
         )
         v1Db.close()
 
-        // La base real ya va por v5: abrirla aplica la cadena completa de migraciones.
+        // La base real ya va por v6: abrirla aplica la cadena completa de migraciones.
         val migratedDb = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .allowMainThreadQueries()
             .build()
 
@@ -219,7 +257,7 @@ class MigrationTest {
         v2Db.close()
 
         val v3Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .allowMainThreadQueries()
             .build()
 
@@ -263,7 +301,7 @@ class MigrationTest {
         v3Db.close()
 
         val v4Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .allowMainThreadQueries()
             .build()
 
@@ -317,7 +355,7 @@ class MigrationTest {
         v4Db.close()
 
         val v5Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .allowMainThreadQueries()
             .build()
 
@@ -337,5 +375,51 @@ class MigrationTest {
         assertEquals("El usuario calza un 42", facts.single().fact)
 
         v5Db.close()
+    }
+
+    @Test
+    fun `migracion 5 a 6 conserva la memoria y habilita mapQuery nulo`() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        val v5Db = Room.databaseBuilder(context, OperatorDatabaseV5ForTest::class.java, dbFile.path)
+            .allowMainThreadQueries()
+            .build()
+        v5Db.memoryDao().upsert(
+            MemoryFactEntity(
+                id = "m1",
+                topic = "talla de pie",
+                fact = "El usuario calza un 42",
+                createdAtEpochMillis = 1_000L,
+            ),
+        )
+        v5Db.close()
+
+        val v6Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .allowMainThreadQueries()
+            .build()
+
+        assertEquals(1, v6Db.memoryDao().getRecent(10).size)
+
+        v6Db.parsedIntentDao().upsert(
+            ParsedIntentEntity(
+                voiceNoteId = "n1",
+                intentType = "NEARBY_SEARCH",
+                confidence = 0.8f,
+                title = "NEARBY SEARCH",
+                summary = "busca vegano",
+                actionsJson = "[]",
+                remindersJson = "[]",
+                clarifyingQuestionsJson = "[]",
+                assistantResponse = "Búsqueda preparada, señor.",
+                needsConfirmation = true,
+                createdAtEpochMillis = 2_000L,
+                mapQuery = "restaurante vegano",
+            ),
+        )
+        val stored = v6Db.parsedIntentDao().getByVoiceNoteId("n1")
+        assertEquals("restaurante vegano", stored?.mapQuery)
+
+        v6Db.close()
     }
 }

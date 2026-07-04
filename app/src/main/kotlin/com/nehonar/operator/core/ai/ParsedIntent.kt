@@ -12,6 +12,7 @@ enum class IntentType {
     MOOD_OR_ENERGY,
     IDEA_CAPTURE,
     DAILY_CONSTRAINT,
+    NEARBY_SEARCH,
     GENERAL_NOTE,
     UNKNOWN,
 }
@@ -88,4 +89,6 @@ data class ParsedIntent(
     /** "HH:mm" en 24h. Null si no aplica. */
     val time: String? = null,
     val memoryFacts: List<MemoryFactDraft> = emptyList(),
+    /** Consulta concisa para buscar cerca en un mapa (p. ej. "restaurante vegano"). Null si no aplica. */
+    val mapQuery: String? = null,
 )

@@ -32,6 +32,7 @@ data class ParsedIntentEntity(
     // con el DEFAULT '[]' que aplica MIGRATION_4_5 al añadir la columna.
     @ColumnInfo(defaultValue = "'[]'")
     val memoryFactsJson: String = "[]",
+    val mapQuery: String? = null,
 )
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -49,6 +50,7 @@ fun ParsedIntentEntity.toDomain(): ParsedIntent = ParsedIntent(
     date = date,
     time = time,
     memoryFacts = json.decodeFromString(memoryFactsJson),
+    mapQuery = mapQuery,
 )
 
 fun ParsedIntent.toEntity(voiceNoteId: String, createdAt: Instant): ParsedIntentEntity =
@@ -67,4 +69,5 @@ fun ParsedIntent.toEntity(voiceNoteId: String, createdAt: Instant): ParsedIntent
         date = date,
         time = time,
         memoryFactsJson = json.encodeToString<List<MemoryFactDraft>>(memoryFacts),
+        mapQuery = mapQuery,
     )

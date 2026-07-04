@@ -19,6 +19,8 @@ data class IntentJson(
     /** "HH:mm" en 24h. */
     val time: String? = null,
     val memory_facts: List<MemoryFactJson> = emptyList(),
+    /** Consulta concisa para buscar cerca en un mapa. */
+    val map_query: String? = null,
 )
 
 @Serializable

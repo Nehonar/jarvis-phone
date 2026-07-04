@@ -8,6 +8,7 @@ import com.nehonar.operator.core.database.MIGRATION_1_2
 import com.nehonar.operator.core.database.MIGRATION_2_3
 import com.nehonar.operator.core.database.MIGRATION_3_4
 import com.nehonar.operator.core.database.MIGRATION_4_5
+import com.nehonar.operator.core.database.MIGRATION_5_6
 import com.nehonar.operator.core.database.OperatorDatabase
 import com.nehonar.operator.core.database.ParsedIntentRepositoryImpl
 import com.nehonar.operator.core.database.ReminderRepositoryImpl
@@ -38,7 +39,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OperatorDatabase =
         Room.databaseBuilder(context, OperatorDatabase::class.java, "operator.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build()
 
     @Provides

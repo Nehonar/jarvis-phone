@@ -55,6 +55,15 @@ class PromptBuilderTest {
     }
 
     @Test
+    fun `incluye la regla de busqueda cercana y el tipo NEARBY_SEARCH`() {
+        val prompt = PromptBuilder.systemPrompt(today)
+
+        assertTrue(prompt.contains("NEARBY_SEARCH"))
+        assertTrue(prompt.contains("map_query"))
+        assertTrue(prompt.contains("Búsqueda cercana"))
+    }
+
+    @Test
     fun `mantiene la regla de hora ambigua`() {
         val prompt = PromptBuilder.systemPrompt(today)
 

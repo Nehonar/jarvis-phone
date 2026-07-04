@@ -44,7 +44,7 @@ object PromptBuilder {
         JSON válido, sin texto adicional, sin markdown, con exactamente estos campos:
 
         {
-          "intent_type": "REMINDER|PREPARE_EVENT|CARRY_ITEMS|SHOPPING|CALL_OR_MESSAGE|MOOD_OR_ENERGY|IDEA_CAPTURE|DAILY_CONSTRAINT|GENERAL_NOTE|UNKNOWN",
+          "intent_type": "REMINDER|PREPARE_EVENT|CARRY_ITEMS|SHOPPING|CALL_OR_MESSAGE|MOOD_OR_ENERGY|IDEA_CAPTURE|DAILY_CONSTRAINT|NEARBY_SEARCH|GENERAL_NOTE|UNKNOWN",
           "confidence": 0.0 a 1.0,
           "title": "string corto",
           "summary": "string, resumen breve",
@@ -55,7 +55,8 @@ object PromptBuilder {
           "needs_confirmation": true,
           "date": "YYYY-MM-DD o null",
           "time": "HH:mm en formato 24h, o null",
-          "memory_facts": [{"topic": "string corto", "fact": "string autocontenido"}]
+          "memory_facts": [{"topic": "string corto", "fact": "string autocontenido"}],
+          "map_query": "consulta corta para buscar cerca en un mapa, o null"
         }
 
         Fecha actual: $today ($dayName). Úsala para resolver expresiones relativas
@@ -88,6 +89,15 @@ $agendaBlock$memoryBlock
         las tareas, los recordatorios ni lo transitorio ("hoy estoy cansado"):
         eso va en actions/reminders o en el tipo que toque. Lista vacía si no hay
         nada memorable, que es lo habitual.
+
+        Búsqueda cercana ("map_query"): si el usuario pide encontrar un sitio cerca
+        ("búscame un restaurante vegano cerca", "un sitio para comer", "una farmacia
+        de guardia"), usa intent_type "NEARBY_SEARCH" y pon en "map_query" una
+        consulta CORTA y concreta para un mapa (p. ej. "restaurante vegano",
+        "farmacia"), aprovechando la memoria si aplica (si sabes que el usuario es
+        vegano y pide "un sitio para comer" ⇒ "restaurante vegano"). No inventes una
+        ciudad ni coordenadas: la app añade la ubicación actual. Para lo que no sea
+        búsqueda de un lugar cercano, "map_query" es null.
 
         Mensajes de recordatorio ("reminders[].message"): deben ser autocontenidos y
         con hora absoluta, porque se muestran también en listas y en el widget antes

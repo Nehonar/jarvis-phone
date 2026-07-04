@@ -163,6 +163,29 @@ class MockAIProviderTest {
     }
 
     @Test
+    fun `buscame cerca detecta NEARBY_SEARCH y limpia la consulta`() = runTest {
+        val result = parse("búscame un restaurante vegano cerca")
+
+        assertEquals(IntentType.NEARBY_SEARCH, result.intentType)
+        assertEquals("restaurante vegano", result.mapQuery)
+    }
+
+    @Test
+    fun `busca sin cerca tambien construye la consulta`() = runTest {
+        val result = parse("busca una farmacia de guardia")
+
+        assertEquals(IntentType.NEARBY_SEARCH, result.intentType)
+        assertEquals("farmacia de guardia", result.mapQuery)
+    }
+
+    @Test
+    fun `sin disparador de busqueda mapQuery es null`() = runTest {
+        val result = parse("comprar fruta y yogures")
+
+        assertNull(result.mapQuery)
+    }
+
+    @Test
     fun `texto sin disparadores es UNKNOWN`() = runTest {
         val result = parse("hola qué tal todo bien")
 
