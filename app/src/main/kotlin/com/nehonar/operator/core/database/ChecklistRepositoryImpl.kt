@@ -29,4 +29,8 @@ class ChecklistRepositoryImpl @Inject constructor(
     override suspend fun deleteDone() {
         dao.deleteDone()
     }
+
+    override suspend fun deleteForVoiceNote(voiceNoteId: String) {
+        dao.deleteForVoiceNote(voiceNoteId)
+    }
 }

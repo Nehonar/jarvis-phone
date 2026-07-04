@@ -199,6 +199,10 @@ atrás), el scope se cancelaba antes de repintar el widget. Resolución:
 - Bug relacionado corregido: borrar una nota en LOG dejaba sus recordatorios
   huérfanos con la alarma viva (y visibles en el widget). Ahora el borrado es
   en cascada: cancela la alarma, borra los recordatorios y refresca el widget.
+- Segunda ronda (el usuario seguía viendo datos borrados): DISCARD en Review
+  tampoco hacía la cascada ni refrescaba; y se añade refresco en
+  `MainActivity.onPause()` — el flujo real es "borro y salgo a la pantalla de
+  inicio", así que sincronizar al salir de la app es la red que faltaba.
 
 ## D-013 · Hora ambigua: nunca se adivina la franja, se pregunta
 

@@ -170,8 +170,16 @@ class ReviewViewModel @Inject constructor(
 
     fun discard() {
         viewModelScope.launch {
+            // Cascada: si la nota ya se aceptó antes, puede tener recordatorio con
+            // alarma viva e items de checklist; descartar limpia todo.
+            reminderRepository.getAllForVoiceNote(voiceNoteId).forEach { reminder ->
+                reminderScheduler.cancel(reminder.id)
+                reminderRepository.delete(reminder.id)
+            }
+            checklistRepository.deleteForVoiceNote(voiceNoteId)
             parsedIntentRepository.deleteByVoiceNoteId(voiceNoteId)
             voiceNoteRepository.delete(voiceNoteId)
+            widgetRefresher.refresh()
             _uiState.value = ReviewUiState.Done
         }
     }

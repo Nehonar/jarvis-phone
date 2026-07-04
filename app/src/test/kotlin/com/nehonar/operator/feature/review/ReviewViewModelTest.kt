@@ -194,6 +194,31 @@ class ReviewViewModelTest {
     }
 
     @Test
+    fun `descartar cancela recordatorios, limpia checklist y refresca el widget`() = runTest {
+        val intent = sampleIntent().copy(
+            intentType = IntentType.REMINDER,
+            date = "2030-01-01",
+            time = "09:00",
+            actions = listOf(ActionItem(ActionType.CARRY, "el portátil", Priority.HIGH)),
+        )
+        seedNote("n1", "recuerdame algo", intent)
+        val vm = viewModel("n1")
+        // Aceptar primero: crea recordatorio programado e item de checklist.
+        vm.accept()
+        assertEquals(1, reminderRepository.current.size)
+        assertEquals(1, checklistRepository.current.size)
+        val reminderId = reminderRepository.current.values.single().id
+
+        val vm2 = viewModel("n1")
+        vm2.discard()
+
+        assertTrue(reminderRepository.current.isEmpty())
+        assertTrue(checklistRepository.current.isEmpty())
+        assertTrue(reminderScheduler.cancelled.contains(reminderId))
+        assertEquals(null, voiceNoteRepository.getById("n1"))
+    }
+
+    @Test
     fun `editar texto reparsea con la IA y actualiza transcript e intencion`() = runTest {
         seedNote("n1", "comprar fruta", sampleIntent())
         val reparsed = ParsedIntent(

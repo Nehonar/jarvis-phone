@@ -23,4 +23,7 @@ interface ChecklistDao {
 
     @Query("DELETE FROM checklist_items WHERE done = 1")
     suspend fun deleteDone()
+
+    @Query("DELETE FROM checklist_items WHERE voiceNoteId = :voiceNoteId")
+    suspend fun deleteForVoiceNote(voiceNoteId: String)
 }

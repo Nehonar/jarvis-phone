@@ -195,6 +195,10 @@ class FakeChecklistRepository : ChecklistRepository {
     override suspend fun deleteDone() {
         items.update { map -> map.filterValues { !it.done } }
     }
+
+    override suspend fun deleteForVoiceNote(voiceNoteId: String) {
+        items.update { map -> map.filterValues { it.voiceNoteId != voiceNoteId } }
+    }
 }
 
 class FakeWidgetRefresher : WidgetRefresher {

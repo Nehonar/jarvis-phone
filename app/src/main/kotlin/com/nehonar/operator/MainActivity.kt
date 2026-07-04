@@ -27,4 +27,11 @@ class MainActivity : ComponentActivity() {
         // widget se sincroniza aunque algún refresco puntual se haya perdido.
         widgetRefresher.refresh()
     }
+
+    override fun onPause() {
+        super.onPause()
+        // Al salir de la app (típicamente a la pantalla de inicio, donde está el
+        // widget) se sincroniza con lo último que el usuario haya cambiado dentro.
+        widgetRefresher.refresh()
+    }
 }

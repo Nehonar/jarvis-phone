@@ -7,6 +7,7 @@ import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.common.formatOperatorDateTime
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
+import com.nehonar.operator.core.domain.repository.ChecklistRepository
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
@@ -41,6 +42,7 @@ class HistoryViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
     private val reminderScheduler: ReminderScheduler,
     private val widgetRefresher: WidgetRefresher,
+    private val checklistRepository: ChecklistRepository,
 ) : ViewModel() {
 
     val items: StateFlow<List<HistoryItem>> = combine(
@@ -73,6 +75,7 @@ class HistoryViewModel @Inject constructor(
                 reminderScheduler.cancel(reminder.id)
                 reminderRepository.delete(reminder.id)
             }
+            checklistRepository.deleteForVoiceNote(id)
             parsedIntentRepository.deleteByVoiceNoteId(id)
             voiceNoteRepository.delete(id)
             widgetRefresher.refresh()

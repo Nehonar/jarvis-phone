@@ -9,4 +9,5 @@ interface ChecklistRepository {
     suspend fun save(item: ChecklistItem)
     suspend fun delete(id: String)
     suspend fun deleteDone()
+    suspend fun deleteForVoiceNote(voiceNoteId: String)
 }

@@ -8,6 +8,7 @@ import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.testing.FakeAIProvider
+import com.nehonar.operator.testing.FakeChecklistRepository
 import com.nehonar.operator.testing.FakeParsedIntentRepository
 import com.nehonar.operator.testing.FakeReminderRepository
 import com.nehonar.operator.testing.FakeReminderScheduler
@@ -39,7 +40,7 @@ class HistoryViewModelTest {
         voiceNoteRepository.save(note("b", "llamar a Marc", 2_000L))
         parsedIntentRepository.save("b", sampleIntent(IntentType.CALL_OR_MESSAGE))
 
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher())
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher(), FakeChecklistRepository())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             vm.items.collect {}
         }
@@ -73,7 +74,7 @@ class HistoryViewModelTest {
             ),
         )
 
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), reminderRepository, reminderScheduler, widgetRefresher)
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), reminderRepository, reminderScheduler, widgetRefresher, FakeChecklistRepository())
 
         vm.delete("a")
 
@@ -90,7 +91,7 @@ class HistoryViewModelTest {
         voiceNoteRepository.save(note("pending", "comprar fruta", 1_000L, VoiceNoteStatus.TRANSCRIBED))
         voiceNoteRepository.save(note("done", "llamar a Marc", 2_000L, VoiceNoteStatus.PARSED))
 
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher())
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, FakeAIProvider(), FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher(), FakeChecklistRepository())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             vm.items.collect {}
         }
@@ -108,7 +109,7 @@ class HistoryViewModelTest {
         val aiProvider = FakeAIProvider {
             AIParseResult.Success(sampleIntent(IntentType.SHOPPING))
         }
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, aiProvider, FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher())
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, aiProvider, FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher(), FakeChecklistRepository())
 
         vm.retryParsing("pending")
 
@@ -126,7 +127,7 @@ class HistoryViewModelTest {
         val parsedIntentRepository = FakeParsedIntentRepository()
         voiceNoteRepository.save(note("pending", "comprar fruta", 1_000L, VoiceNoteStatus.TRANSCRIBED))
         val aiProvider = FakeAIProvider { AIParseResult.Failure("Sin conexión") }
-        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, aiProvider, FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher())
+        val vm = HistoryViewModel(voiceNoteRepository, parsedIntentRepository, aiProvider, FakeReminderRepository(), FakeReminderScheduler(), FakeWidgetRefresher(), FakeChecklistRepository())
 
         vm.retryParsing("pending")
 
