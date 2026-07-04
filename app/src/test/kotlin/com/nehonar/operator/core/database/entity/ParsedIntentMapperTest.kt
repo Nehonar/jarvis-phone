@@ -1,6 +1,7 @@
 package com.nehonar.operator.core.database.entity
 
 import com.nehonar.operator.core.ai.IntentType
+import com.nehonar.operator.core.ai.MemoryFactDraft
 import com.nehonar.operator.core.ai.ParsedIntent
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -25,6 +26,21 @@ class ParsedIntentMapperTest {
         assertEquals("2026-07-04", roundTripped.date)
         assertEquals("09:00", roundTripped.time)
         assertEquals(intent.copy(), roundTripped)
+    }
+
+    @Test
+    fun `entity a dominio y vuelta conserva los hechos memorables`() {
+        val intent = ParsedIntent(
+            intentType = IntentType.GENERAL_NOTE,
+            confidence = 0.8f,
+            title = "NOTA",
+            summary = "talla",
+            assistantResponse = "Anotado, señor.",
+            memoryFacts = listOf(MemoryFactDraft("talla de pie", "El usuario calza un 42")),
+        )
+        val roundTripped = intent.toEntity("n1", Instant.ofEpochMilli(1_000)).toDomain()
+
+        assertEquals(intent.memoryFacts, roundTripped.memoryFacts)
     }
 
     @Test

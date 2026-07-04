@@ -1,10 +1,12 @@
 package com.nehonar.operator.core.database.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.nehonar.operator.core.ai.ActionItem
 import com.nehonar.operator.core.ai.ClarifyingQuestion
 import com.nehonar.operator.core.ai.IntentType
+import com.nehonar.operator.core.ai.MemoryFactDraft
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.ai.ReminderDraft
 import java.time.Instant
@@ -26,6 +28,10 @@ data class ParsedIntentEntity(
     val createdAtEpochMillis: Long,
     val date: String? = null,
     val time: String? = null,
+    // defaultValue declarado para que la validación de esquema de Room cuadre
+    // con el DEFAULT '[]' que aplica MIGRATION_4_5 al añadir la columna.
+    @ColumnInfo(defaultValue = "'[]'")
+    val memoryFactsJson: String = "[]",
 )
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -42,6 +48,7 @@ fun ParsedIntentEntity.toDomain(): ParsedIntent = ParsedIntent(
     needsConfirmation = needsConfirmation,
     date = date,
     time = time,
+    memoryFacts = json.decodeFromString(memoryFactsJson),
 )
 
 fun ParsedIntent.toEntity(voiceNoteId: String, createdAt: Instant): ParsedIntentEntity =
@@ -59,4 +66,5 @@ fun ParsedIntent.toEntity(voiceNoteId: String, createdAt: Instant): ParsedIntent
         createdAtEpochMillis = createdAt.toEpochMilli(),
         date = date,
         time = time,
+        memoryFactsJson = json.encodeToString<List<MemoryFactDraft>>(memoryFacts),
     )

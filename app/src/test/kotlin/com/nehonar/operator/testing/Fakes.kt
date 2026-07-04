@@ -9,10 +9,12 @@ import com.nehonar.operator.core.calendar.CalendarEvent
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.domain.model.ChecklistItem
+import com.nehonar.operator.core.domain.model.MemoryFact
 import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.repository.ChecklistRepository
+import com.nehonar.operator.core.domain.repository.MemoryRepository
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
@@ -200,6 +202,27 @@ class FakeChecklistRepository : ChecklistRepository {
 
     override suspend fun deleteForVoiceNote(voiceNoteId: String) {
         items.update { map -> map.filterValues { it.voiceNoteId != voiceNoteId } }
+    }
+}
+
+class FakeMemoryRepository : MemoryRepository {
+
+    private val facts = MutableStateFlow<Map<String, MemoryFact>>(emptyMap())
+
+    val current: Map<String, MemoryFact> get() = facts.value
+
+    override fun observeAll(): Flow<List<MemoryFact>> =
+        facts.map { map -> map.values.sortedByDescending { it.createdAt } }
+
+    override suspend fun getRecent(limit: Int): List<MemoryFact> =
+        facts.value.values.sortedByDescending { it.createdAt }.take(limit)
+
+    override suspend fun save(fact: MemoryFact) {
+        facts.update { it + (fact.id to fact) }
+    }
+
+    override suspend fun delete(id: String) {
+        facts.update { it - id }
     }
 }
 

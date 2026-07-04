@@ -18,6 +18,7 @@ data class IntentJson(
     val date: String? = null,
     /** "HH:mm" en 24h. */
     val time: String? = null,
+    val memory_facts: List<MemoryFactJson> = emptyList(),
 )
 
 @Serializable
@@ -37,4 +38,10 @@ data class ReminderJson(
 data class ClarifyingQuestionJson(
     val field: String,
     val question: String,
+)
+
+@Serializable
+data class MemoryFactJson(
+    val topic: String = "",
+    val fact: String,
 )

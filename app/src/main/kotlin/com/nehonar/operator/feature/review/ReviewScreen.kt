@@ -210,6 +210,20 @@ private fun ReviewContent(
         }
     }
 
+    if (intent.memoryFacts.isNotEmpty()) {
+        Spacer(Modifier.height(12.dp))
+        ConsolePanel(title = "MEMORY", modifier = Modifier.fillMaxWidth()) {
+            intent.memoryFacts.forEach { fact ->
+                Text(
+                    text = "${fact.topic}: ${fact.fact}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OperatorColors.Cyan,
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+    }
+
     Spacer(Modifier.height(16.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         OperatorButton(

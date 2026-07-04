@@ -4,6 +4,7 @@ import com.nehonar.operator.core.ai.ActionItem
 import com.nehonar.operator.core.ai.ActionType
 import com.nehonar.operator.core.ai.ClarifyingQuestion
 import com.nehonar.operator.core.ai.IntentType
+import com.nehonar.operator.core.ai.MemoryFactDraft
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.ai.Priority
 import com.nehonar.operator.core.ai.ReminderDraft
@@ -63,6 +64,9 @@ object IntentJsonParser {
         needsConfirmation = needs_confirmation,
         date = date?.let { validIsoDateOrNull(it) },
         time = time?.let { validTimeOrNull(it) },
+        memoryFacts = memory_facts
+            .filter { it.fact.isNotBlank() }
+            .map { MemoryFactDraft(topic = it.topic.ifBlank { "nota" }, fact = it.fact) },
     )
 
     /** La IA a veces no respeta el formato exacto: se descarta en vez de romper la app. */

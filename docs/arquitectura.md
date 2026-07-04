@@ -299,6 +299,7 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 7 | Prep Engine (checklists contextuales) | **Implementada** → [`fase-7-plan.md`](fase-7-plan.md) |
 | 8 | Consola visual (nodos/partículas reactivos) | **Implementada** → [`fase-8-plan.md`](fase-8-plan.md) |
 | 9 | Calendario (lectura + agenda en el prompt) | **Implementada** → [`fase-9-plan.md`](fase-9-plan.md) |
-| 10–14 | Memoria, salud, email RO, ubicación, backend | — |
+| 10 | Memoria (hechos personales persistentes) | **Implementada** → [`fase-10-plan.md`](fase-10-plan.md) |
+| 11–14 | Salud, email RO, ubicación, backend | — |
 
 Regla de oro: **cada fase termina con una app usable y compilable.**

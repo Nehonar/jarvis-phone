@@ -150,6 +150,36 @@ class IntentJsonParserTest {
     }
 
     @Test
+    fun `memory_facts se parsean y los vacios se descartan`() {
+        val json = """
+            {"intent_type": "GENERAL_NOTE", "assistant_response": "ok",
+             "memory_facts": [
+               {"topic": "talla de pie", "fact": "El usuario calza un 42"},
+               {"topic": "vacio", "fact": "   "},
+               {"fact": "A Marc le gusta el vino tinto"}
+             ]}
+        """.trimIndent()
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertEquals(2, intent.memoryFacts.size)
+        assertEquals("talla de pie", intent.memoryFacts.first().topic)
+        // Sin topic explícito cae al genérico.
+        assertEquals("nota", intent.memoryFacts.last().topic)
+    }
+
+    @Test
+    fun `sin memory_facts la lista queda vacia`() {
+        val json = """{"intent_type": "SHOPPING", "assistant_response": "ok"}"""
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertTrue(intent.memoryFacts.isEmpty())
+    }
+
+    @Test
     fun `date y time ausentes son null por defecto`() {
         val json = """{"intent_type": "SHOPPING", "assistant_response": "ok"}"""
 

@@ -148,6 +148,21 @@ class MockAIProviderTest {
     }
 
     @Test
+    fun `apunta que extrae un hecho memorable`() = runTest {
+        val result = parse("Apunta que mi talla de pie es el 42")
+
+        assertEquals(1, result.memoryFacts.size)
+        assertEquals("mi talla de pie es el 42", result.memoryFacts.single().fact)
+    }
+
+    @Test
+    fun `sin disparador de memoria no hay hechos`() = runTest {
+        val result = parse("comprar fruta y yogures")
+
+        assertTrue(result.memoryFacts.isEmpty())
+    }
+
+    @Test
     fun `texto sin disparadores es UNKNOWN`() = runTest {
         val result = parse("hola qué tal todo bien")
 

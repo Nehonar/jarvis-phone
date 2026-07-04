@@ -37,6 +37,24 @@ class PromptBuilderTest {
     }
 
     @Test
+    fun `sin memoria no incluye el bloque de memoria`() {
+        val prompt = PromptBuilder.systemPrompt(today)
+
+        assertFalse(prompt.contains("Memoria del operador"))
+    }
+
+    @Test
+    fun `con memoria incluye los hechos`() {
+        val prompt = PromptBuilder.systemPrompt(
+            today,
+            memoryFacts = listOf("talla de pie: El usuario calza un 42"),
+        )
+
+        assertTrue(prompt.contains("Memoria del operador"))
+        assertTrue(prompt.contains("- talla de pie: El usuario calza un 42"))
+    }
+
+    @Test
     fun `mantiene la regla de hora ambigua`() {
         val prompt = PromptBuilder.systemPrompt(today)
 

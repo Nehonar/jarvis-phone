@@ -25,3 +25,6 @@ data object RemindersRoute
 
 @Serializable
 data object PrepRoute
+
+@Serializable
+data object MemoryRoute

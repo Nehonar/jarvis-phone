@@ -63,6 +63,15 @@ data class ReminderDraft(
     val message: String,
 )
 
+/** Hecho personal estable detectado en la nota; se persiste solo al aceptar. */
+@Serializable
+data class MemoryFactDraft(
+    /** Etiqueta corta para listar, p. ej. "talla de pie". */
+    val topic: String,
+    /** Enunciado autocontenido, p. ej. "El usuario calza un 42". */
+    val fact: String,
+)
+
 @Serializable
 data class ParsedIntent(
     val intentType: IntentType,
@@ -78,4 +87,5 @@ data class ParsedIntent(
     val date: String? = null,
     /** "HH:mm" en 24h. Null si no aplica. */
     val time: String? = null,
+    val memoryFacts: List<MemoryFactDraft> = emptyList(),
 )

@@ -27,6 +27,7 @@ class MockAIProvider @Inject constructor(
             callTarget?.let { add(ActionItem(ActionType.CALL, it, Priority.MEDIUM)) }
         }
 
+        val memoryFacts = extractMemoryFacts(lower, text)
         val resolvedDate = extractDate(lower, timeProvider.today())
         val timeExtraction = extractTime(lower)
         val resolvedTime = (timeExtraction as? TimeExtraction.Resolved)?.time
@@ -80,8 +81,19 @@ class MockAIProvider @Inject constructor(
                 needsConfirmation = true,
                 date = resolvedDate,
                 time = resolvedTime,
+                memoryFacts = memoryFacts,
             ),
         )
+    }
+
+    /** "apunta que X" / "recuerda que X" ⇒ hecho memorable con el texto tal cual. */
+    private fun extractMemoryFacts(lower: String, original: String): List<MemoryFactDraft> {
+        val matchEnd = MEMORY_TRIGGERS.firstNotNullOfOrNull { wordBoundaryRegex(it).find(lower)?.range?.last }
+            ?: return emptyList()
+        val fact = original.substring((matchEnd + 1).coerceAtMost(original.length))
+            .trim().trim('.', '!', '?')
+        if (fact.isEmpty()) return emptyList()
+        return listOf(MemoryFactDraft(topic = fact.take(24), fact = fact))
     }
 
     private fun classify(lower: String): IntentType = when {
@@ -196,6 +208,7 @@ class MockAIProvider @Inject constructor(
         val CARRY_TRIGGERS = listOf("llevar")
         val CALL_TRIGGERS = listOf("llamar a", "avisar a")
         val REMINDER_TRIGGERS = listOf("recuérdame", "recuerdame", "avísame", "avisame", "acuérdame", "acuerdame")
+        val MEMORY_TRIGGERS = listOf("apunta que", "recuerda que")
         val PREPARE_EVENT_TRIGGERS = listOf("oficina", "gimnasio", "viaje")
         val MOOD_TRIGGERS = listOf("cansado", "cansada", "sin energía", "sin energia", "baja energía", "baja energia")
         val PM_MARKERS = listOf("mediodía", "mediodia", "tarde", "noche")

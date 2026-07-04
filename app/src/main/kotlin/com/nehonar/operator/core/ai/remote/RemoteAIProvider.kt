@@ -5,6 +5,7 @@ import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.common.formatOperatorTime
+import com.nehonar.operator.core.domain.repository.MemoryRepository
 import java.io.IOException
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ class RemoteAIProvider(
     private val httpClient: OkHttpClient,
     private val timeProvider: TimeProvider,
     private val calendarRepository: CalendarRepository,
+    private val memoryRepository: MemoryRepository,
 ) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult = withContext(Dispatchers.IO) {
@@ -38,6 +40,8 @@ class RemoteAIProvider(
             if (event.allDay) "(todo el día) ${event.title}"
             else "${formatOperatorTime(event.startAt, zone)} ${event.title}"
         }
+        val memoryFacts = memoryRepository.getRecent(MEMORY_FACTS_IN_PROMPT)
+            .map { "${it.topic}: ${it.fact}" }
         val requestJson = json.encodeToString(
             ChatCompletionRequest.serializer(),
             ChatCompletionRequest(
@@ -45,7 +49,7 @@ class RemoteAIProvider(
                 messages = listOf(
                     ChatMessage(
                         role = "system",
-                        content = PromptBuilder.systemPrompt(timeProvider.today(), agenda),
+                        content = PromptBuilder.systemPrompt(timeProvider.today(), agenda, memoryFacts),
                     ),
                     ChatMessage(role = "user", content = PromptBuilder.buildUserMessage(transcript)),
                 ),
@@ -92,5 +96,6 @@ class RemoteAIProvider(
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+        const val MEMORY_FACTS_IN_PROMPT = 50
     }
 }

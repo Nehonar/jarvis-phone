@@ -62,3 +62,20 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         )
     }
 }
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `parsed_intents` ADD COLUMN `memoryFactsJson` TEXT NOT NULL DEFAULT '[]'")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `memory_facts` (
+                `id` TEXT NOT NULL,
+                `topic` TEXT NOT NULL,
+                `fact` TEXT NOT NULL,
+                `createdAtEpochMillis` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent(),
+        )
+    }
+}

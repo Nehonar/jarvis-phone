@@ -3,18 +3,22 @@ package com.nehonar.operator.core.database.di
 import android.content.Context
 import androidx.room.Room
 import com.nehonar.operator.core.database.ChecklistRepositoryImpl
+import com.nehonar.operator.core.database.MemoryRepositoryImpl
 import com.nehonar.operator.core.database.MIGRATION_1_2
 import com.nehonar.operator.core.database.MIGRATION_2_3
 import com.nehonar.operator.core.database.MIGRATION_3_4
+import com.nehonar.operator.core.database.MIGRATION_4_5
 import com.nehonar.operator.core.database.OperatorDatabase
 import com.nehonar.operator.core.database.ParsedIntentRepositoryImpl
 import com.nehonar.operator.core.database.ReminderRepositoryImpl
 import com.nehonar.operator.core.database.VoiceNoteRepositoryImpl
 import com.nehonar.operator.core.database.dao.ChecklistDao
+import com.nehonar.operator.core.database.dao.MemoryDao
 import com.nehonar.operator.core.database.dao.ParsedIntentDao
 import com.nehonar.operator.core.database.dao.ReminderDao
 import com.nehonar.operator.core.database.dao.VoiceNoteDao
 import com.nehonar.operator.core.domain.repository.ChecklistRepository
+import com.nehonar.operator.core.domain.repository.MemoryRepository
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
@@ -34,7 +38,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): OperatorDatabase =
         Room.databaseBuilder(context, OperatorDatabase::class.java, "operator.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
     @Provides
@@ -48,6 +52,9 @@ object DatabaseModule {
 
     @Provides
     fun provideChecklistDao(db: OperatorDatabase): ChecklistDao = db.checklistDao()
+
+    @Provides
+    fun provideMemoryDao(db: OperatorDatabase): MemoryDao = db.memoryDao()
 }
 
 @Module
@@ -69,4 +76,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindChecklistRepository(impl: ChecklistRepositoryImpl): ChecklistRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMemoryRepository(impl: MemoryRepositoryImpl): MemoryRepository
 }

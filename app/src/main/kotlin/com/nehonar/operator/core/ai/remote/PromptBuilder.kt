@@ -9,7 +9,11 @@ object PromptBuilder {
     // Mismos campos que ParsedIntent (ver core/ai/ParsedIntent.kt), en snake_case.
     // Incluye date/time desde la Fase 4 (recordatorios), para poder programar avisos
     // reales; el resto (personas/lugar) sigue fuera hasta que haga falta.
-    fun systemPrompt(today: LocalDate, agenda: List<String> = emptyList()): String {
+    fun systemPrompt(
+        today: LocalDate,
+        agenda: List<String> = emptyList(),
+        memoryFacts: List<String> = emptyList(),
+    ): String {
         val dayName = today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es")).lowercase()
         val agendaBlock = if (agenda.isEmpty()) {
             ""
@@ -21,6 +25,17 @@ object PromptBuilder {
         Si la nota se refiere a uno de estos eventos ("la reunión", "la cita"…),
         usa su hora real para resolver "date"/"time" y las antelaciones — en ese
         caso la hora NO es ambigua y no debes preguntar la franja.
+            """.trimEnd()
+        }
+        val memoryBlock = if (memoryFacts.isEmpty()) {
+            ""
+        } else {
+            """
+
+        Memoria del operador — hechos que el usuario te contó antes:
+        ${memoryFacts.joinToString("\n        ") { "- $it" }}
+        Úsalos cuando la nota los necesite (tallas, gustos, códigos, nombres…),
+        sin repetirlos como hechos nuevos.
             """.trimEnd()
         }
         return """
@@ -39,7 +54,8 @@ object PromptBuilder {
           "assistant_response": "string, breve, estilo mayordomo distinguido",
           "needs_confirmation": true,
           "date": "YYYY-MM-DD o null",
-          "time": "HH:mm en formato 24h, o null"
+          "time": "HH:mm en formato 24h, o null",
+          "memory_facts": [{"topic": "string corto", "fact": "string autocontenido"}]
         }
 
         Fecha actual: $today ($dayName). Úsala para resolver expresiones relativas
@@ -63,7 +79,15 @@ object PromptBuilder {
         AVISO, no la del evento — réstale N minutos a la hora del evento (reunión a
         las 19:00, avisar 5 min antes ⇒ "time": "18:55"). Si no conoces la hora del
         evento, pregúntala. La regla de ambigüedad también aplica a la hora del evento.
-$agendaBlock
+$agendaBlock$memoryBlock
+
+        Hechos memorables ("memory_facts"): si la nota contiene un dato personal
+        ESTABLE que merezca recordarse (tallas, gustos, alergias, códigos, nombres
+        de personas y sus relaciones), añádelo con un "topic" corto y un "fact"
+        autocontenido en tercera persona ("El usuario calza un 42"). NO son hechos
+        las tareas, los recordatorios ni lo transitorio ("hoy estoy cansado"):
+        eso va en actions/reminders o en el tipo que toque. Lista vacía si no hay
+        nada memorable, que es lo habitual.
 
         Mensajes de recordatorio ("reminders[].message"): deben ser autocontenidos y
         con hora absoluta, porque se muestran también en listas y en el widget antes

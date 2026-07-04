@@ -5,12 +5,14 @@ import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.ActionItem
 import com.nehonar.operator.core.ai.ActionType
 import com.nehonar.operator.core.ai.IntentType
+import com.nehonar.operator.core.ai.MemoryFactDraft
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.ai.Priority
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.testing.FakeAIProvider
 import com.nehonar.operator.testing.FakeChecklistRepository
+import com.nehonar.operator.testing.FakeMemoryRepository
 import com.nehonar.operator.testing.FakeParsedIntentRepository
 import com.nehonar.operator.testing.FakeReminderRepository
 import com.nehonar.operator.testing.FakeReminderScheduler
@@ -37,6 +39,7 @@ class ReviewViewModelTest {
     private val timeProvider = FixedTimeProvider()
     private val widgetRefresher = FakeWidgetRefresher()
     private val checklistRepository = FakeChecklistRepository()
+    private val memoryRepository = FakeMemoryRepository()
 
     private suspend fun seedNote(id: String, transcript: String, intent: ParsedIntent) {
         voiceNoteRepository.save(
@@ -62,6 +65,7 @@ class ReviewViewModelTest {
             timeProvider = timeProvider,
             widgetRefresher = widgetRefresher,
             checklistRepository = checklistRepository,
+            memoryRepository = memoryRepository,
         )
 
     private fun sampleIntent() = ParsedIntent(
@@ -142,6 +146,33 @@ class ReviewViewModelTest {
         assertEquals(listOf(ActionType.CARRY, ActionType.BUY), items.map { it.type })
         assertTrue(items.none { it.done })
         assertEquals("n1", items.first().voiceNoteId)
+    }
+
+    @Test
+    fun `aceptar persiste los hechos memorables`() = runTest {
+        val intent = sampleIntent().copy(
+            memoryFacts = listOf(
+                MemoryFactDraft(topic = "talla de pie", fact = "El usuario calza un 42"),
+            ),
+        )
+        seedNote("n1", "apunta que mi talla de pie es el 42", intent)
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        val fact = memoryRepository.current.values.single()
+        assertEquals("talla de pie", fact.topic)
+        assertEquals("El usuario calza un 42", fact.fact)
+    }
+
+    @Test
+    fun `aceptar sin hechos no toca la memoria`() = runTest {
+        seedNote("n1", "comprar fruta", sampleIntent())
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        assertTrue(memoryRepository.current.isEmpty())
     }
 
     @Test
