@@ -53,8 +53,8 @@ para esta estética), ni modo "salvapantallas" siempre encendido.
 
 ## Definición de terminado (checklist)
 
-- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
-- [ ] Tests de `ConsoleViewModel`: nodos por tipo, tope, contadores reales,
+- [x] `assembleDebug` + `testDebugUnitTest` en verde en CI (run #28680674272)
+- [x] Tests de `ConsoleViewModel`: nodos por tipo, tope, contadores reales,
       activityLevel y MODE
 - [ ] Con datos reales, la consola muestra nodos orbitando de colores por tipo
       y el panel de lectura cuadra con Home (dispositivo)
