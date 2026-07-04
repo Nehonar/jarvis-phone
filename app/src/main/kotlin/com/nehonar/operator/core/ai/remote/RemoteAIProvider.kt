@@ -6,6 +6,7 @@ import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.common.formatOperatorTime
 import com.nehonar.operator.core.domain.repository.MemoryRepository
+import com.nehonar.operator.core.domain.repository.PlaceRepository
 import java.io.IOException
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,7 @@ class RemoteAIProvider(
     private val timeProvider: TimeProvider,
     private val calendarRepository: CalendarRepository,
     private val memoryRepository: MemoryRepository,
+    private val placeRepository: PlaceRepository,
 ) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult = withContext(Dispatchers.IO) {
@@ -42,6 +44,7 @@ class RemoteAIProvider(
         }
         val memoryFacts = memoryRepository.getRecent(MEMORY_FACTS_IN_PROMPT)
             .map { "${it.topic}: ${it.fact}" }
+        val places = placeRepository.getAll().map { it.label }
         val requestJson = json.encodeToString(
             ChatCompletionRequest.serializer(),
             ChatCompletionRequest(
@@ -49,7 +52,7 @@ class RemoteAIProvider(
                 messages = listOf(
                     ChatMessage(
                         role = "system",
-                        content = PromptBuilder.systemPrompt(timeProvider.today(), agenda, memoryFacts),
+                        content = PromptBuilder.systemPrompt(timeProvider.today(), agenda, memoryFacts, places),
                     ),
                     ChatMessage(role = "user", content = PromptBuilder.buildUserMessage(transcript)),
                 ),

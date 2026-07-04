@@ -34,6 +34,7 @@ data class ActionJson(
 data class ReminderJson(
     val trigger: String = "NONE",
     val message: String,
+    val place: String? = null,
 )
 
 @Serializable

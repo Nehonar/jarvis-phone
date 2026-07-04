@@ -28,3 +28,6 @@ data object PrepRoute
 
 @Serializable
 data object MemoryRoute
+
+@Serializable
+data object PlacesRoute

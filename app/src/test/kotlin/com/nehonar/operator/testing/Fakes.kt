@@ -10,14 +10,21 @@ import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.domain.model.ChecklistItem
 import com.nehonar.operator.core.domain.model.MemoryFact
+import com.nehonar.operator.core.domain.model.PlaceReminder
 import com.nehonar.operator.core.domain.model.Reminder
 import com.nehonar.operator.core.domain.model.ReminderStatus
+import com.nehonar.operator.core.domain.model.SavedPlace
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.repository.ChecklistRepository
 import com.nehonar.operator.core.domain.repository.MemoryRepository
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
+import com.nehonar.operator.core.domain.repository.PlaceReminderRepository
+import com.nehonar.operator.core.domain.repository.PlaceRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import com.nehonar.operator.core.location.GeofenceScheduler
+import com.nehonar.operator.core.location.LatLng
+import com.nehonar.operator.core.location.LocationProvider
 import com.nehonar.operator.core.notifications.ReminderScheduler
 import com.nehonar.operator.core.security.ApiKeyStore
 import com.nehonar.operator.core.voice.SpeechToText
@@ -224,6 +231,81 @@ class FakeMemoryRepository : MemoryRepository {
     override suspend fun delete(id: String) {
         facts.update { it - id }
     }
+}
+
+class FakePlaceRepository : PlaceRepository {
+
+    private val places = MutableStateFlow<Map<String, SavedPlace>>(emptyMap())
+
+    val current: Map<String, SavedPlace> get() = places.value
+
+    override fun observeAll(): Flow<List<SavedPlace>> =
+        places.map { map -> map.values.sortedByDescending { it.createdAt } }
+
+    override suspend fun getAll(): List<SavedPlace> = places.value.values.toList()
+
+    override suspend fun getById(id: String): SavedPlace? = places.value[id]
+
+    override suspend fun save(place: SavedPlace) {
+        places.update { it + (place.id to place) }
+    }
+
+    override suspend fun delete(id: String) {
+        places.update { it - id }
+    }
+}
+
+class FakePlaceReminderRepository : PlaceReminderRepository {
+
+    private val reminders = MutableStateFlow<Map<String, PlaceReminder>>(emptyMap())
+
+    val current: Map<String, PlaceReminder> get() = reminders.value
+
+    override fun observePending(): Flow<List<PlaceReminder>> = reminders.map { map ->
+        map.values.filter { it.status == ReminderStatus.PENDING }
+    }
+
+    override suspend fun getAllPending(): List<PlaceReminder> =
+        reminders.value.values.filter { it.status == ReminderStatus.PENDING }
+
+    override suspend fun getById(id: String): PlaceReminder? = reminders.value[id]
+
+    override suspend fun getAllForPlace(placeId: String): List<PlaceReminder> =
+        reminders.value.values.filter { it.placeId == placeId }
+
+    override suspend fun save(reminder: PlaceReminder) {
+        reminders.update { it + (reminder.id to reminder) }
+    }
+
+    override suspend fun delete(id: String) {
+        reminders.update { it - id }
+    }
+}
+
+class FakeGeofenceScheduler(
+    var backgroundGranted: Boolean = true,
+) : GeofenceScheduler {
+
+    val registered = mutableListOf<SavedPlace>()
+    val unregistered = mutableListOf<String>()
+
+    override fun canRegisterGeofences(): Boolean = backgroundGranted
+
+    override fun register(place: SavedPlace) {
+        registered += place
+    }
+
+    override fun unregister(placeId: String) {
+        unregistered += placeId
+    }
+}
+
+class FakeLocationProvider(
+    var permission: Boolean = true,
+    var location: LatLng? = LatLng(40.4168, -3.7038),
+) : LocationProvider {
+    override fun hasLocationPermission(): Boolean = permission
+    override suspend fun currentLocation(): LatLng? = if (permission) location else null
 }
 
 class FakeCalendarRepository(

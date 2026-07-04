@@ -18,7 +18,9 @@ import com.nehonar.operator.core.database.dao.VoiceNoteDao
 import com.nehonar.operator.core.database.entity.ChecklistItemEntity
 import com.nehonar.operator.core.database.entity.MemoryFactEntity
 import com.nehonar.operator.core.database.entity.ParsedIntentEntity
+import com.nehonar.operator.core.database.entity.PlaceReminderEntity
 import com.nehonar.operator.core.database.entity.ReminderEntity
+import com.nehonar.operator.core.database.entity.SavedPlaceEntity
 import com.nehonar.operator.core.database.entity.VoiceNoteEntity
 import java.io.File
 import kotlinx.coroutines.flow.first
@@ -151,6 +153,44 @@ abstract class OperatorDatabaseV5ForTest : RoomDatabase() {
     abstract fun memoryDao(): MemoryDao
 }
 
+/** Copia del esquema de `parsed_intents` en v6 (con mapQuery). */
+@Entity(tableName = "parsed_intents")
+data class ParsedIntentEntityV6ForTest(
+    @PrimaryKey val voiceNoteId: String,
+    val intentType: String,
+    val confidence: Float,
+    val title: String,
+    val summary: String,
+    val actionsJson: String,
+    val remindersJson: String,
+    val clarifyingQuestionsJson: String,
+    val assistantResponse: String,
+    val needsConfirmation: Boolean,
+    val createdAtEpochMillis: Long,
+    val date: String? = null,
+    val time: String? = null,
+    @ColumnInfo(defaultValue = "'[]'")
+    val memoryFactsJson: String = "[]",
+    val mapQuery: String? = null,
+)
+
+/** Base "sombra" con el esquema v6 (antes de saved_places y place_reminders). */
+@Database(
+    entities = [
+        VoiceNoteEntity::class,
+        ParsedIntentEntityV6ForTest::class,
+        ReminderEntity::class,
+        ChecklistItemEntity::class,
+        MemoryFactEntity::class,
+    ],
+    version = 6,
+    exportSchema = false,
+)
+abstract class OperatorDatabaseV6ForTest : RoomDatabase() {
+    abstract fun reminderDao(): ReminderDao
+    abstract fun memoryDao(): MemoryDao
+}
+
 /**
  * Verifica las migraciones sin depender de los JSON de schema exportados
  * (ver docs/decisiones.md D-006): se construye un fichero real con el esquema
@@ -192,9 +232,9 @@ class MigrationTest {
         )
         v1Db.close()
 
-        // La base real ya va por v6: abrirla aplica la cadena completa de migraciones.
+        // La base real ya va por v7: abrirla aplica la cadena completa de migraciones.
         val migratedDb = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .allowMainThreadQueries()
             .build()
 
@@ -257,7 +297,7 @@ class MigrationTest {
         v2Db.close()
 
         val v3Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .allowMainThreadQueries()
             .build()
 
@@ -301,7 +341,7 @@ class MigrationTest {
         v3Db.close()
 
         val v4Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .allowMainThreadQueries()
             .build()
 
@@ -355,7 +395,7 @@ class MigrationTest {
         v4Db.close()
 
         val v5Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .allowMainThreadQueries()
             .build()
 
@@ -395,7 +435,7 @@ class MigrationTest {
         v5Db.close()
 
         val v6Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .allowMainThreadQueries()
             .build()
 
@@ -421,5 +461,57 @@ class MigrationTest {
         assertEquals("restaurante vegano", stored?.mapQuery)
 
         v6Db.close()
+    }
+
+    @Test
+    fun `migracion 6 a 7 conserva los datos y habilita lugares y recordatorios por lugar`() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        val v6Db = Room.databaseBuilder(context, OperatorDatabaseV6ForTest::class.java, dbFile.path)
+            .allowMainThreadQueries()
+            .build()
+        v6Db.reminderDao().upsert(
+            ReminderEntity(
+                id = "r1",
+                voiceNoteId = "n1",
+                message = "salir de casa",
+                triggerAtEpochMillis = 1_000L,
+                status = "PENDING",
+            ),
+        )
+        v6Db.close()
+
+        val v7Db = Room.databaseBuilder(context, OperatorDatabase::class.java, dbFile.path)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .allowMainThreadQueries()
+            .build()
+
+        assertEquals(1, v7Db.reminderDao().getAllByStatus("PENDING").size)
+
+        v7Db.placeDao().upsert(
+            SavedPlaceEntity(
+                id = "p1",
+                label = "Casa",
+                latitude = 40.4168,
+                longitude = -3.7038,
+                radiusMeters = 150f,
+                createdAtEpochMillis = 2_000L,
+            ),
+        )
+        v7Db.placeReminderDao().upsert(
+            PlaceReminderEntity(
+                id = "pr1",
+                voiceNoteId = "n1",
+                message = "Sacar la basura",
+                placeId = "p1",
+                placeLabel = "Casa",
+                status = "PENDING",
+                createdAtEpochMillis = 3_000L,
+            ),
+        )
+        assertEquals(1, v7Db.placeDao().getAll().size)
+        assertEquals("Sacar la basura", v7Db.placeReminderDao().getAllByStatus("PENDING").single().message)
+
+        v7Db.close()
     }
 }

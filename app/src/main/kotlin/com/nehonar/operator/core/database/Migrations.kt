@@ -85,3 +85,35 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         db.execSQL("ALTER TABLE `parsed_intents` ADD COLUMN `mapQuery` TEXT")
     }
 }
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `saved_places` (
+                `id` TEXT NOT NULL,
+                `label` TEXT NOT NULL,
+                `latitude` REAL NOT NULL,
+                `longitude` REAL NOT NULL,
+                `radiusMeters` REAL NOT NULL,
+                `createdAtEpochMillis` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `place_reminders` (
+                `id` TEXT NOT NULL,
+                `voiceNoteId` TEXT NOT NULL,
+                `message` TEXT NOT NULL,
+                `placeId` TEXT NOT NULL,
+                `placeLabel` TEXT NOT NULL,
+                `status` TEXT NOT NULL,
+                `createdAtEpochMillis` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent(),
+        )
+    }
+}

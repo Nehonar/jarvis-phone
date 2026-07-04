@@ -29,19 +29,25 @@ class MockAIProvider @Inject constructor(
 
         val memoryFacts = extractMemoryFacts(lower, text)
         val mapQuery = extractMapQuery(lower, text)
+        val arrivalPlace = LOCATION_ARRIVAL_REGEX.find(lower)?.groupValues?.getOrNull(2)?.trim()
         val resolvedDate = extractDate(lower, timeProvider.today())
         val timeExtraction = extractTime(lower)
         val resolvedTime = (timeExtraction as? TimeExtraction.Resolved)?.time
         val hasDepartureTime = DEPARTURE_REGEX.containsMatchIn(lower)
 
-        // Una búsqueda cercana manda sobre el resto (p. ej. "búscame" contiene "avísame"... no,
-        // pero sí puede solaparse con otros triggers): si hay map_query, es NEARBY_SEARCH.
-        val intentType = if (mapQuery != null) IntentType.NEARBY_SEARCH else classify(lower)
+        // Prioridad: búsqueda cercana > recordatorio por lugar > clasificación por trigger.
+        val intentType = when {
+            mapQuery != null -> IntentType.NEARBY_SEARCH
+            arrivalPlace != null -> IntentType.REMINDER
+            else -> classify(lower)
+        }
+        // Un recordatorio por lugar no necesita hora: no se pregunta por ella.
+        val isLocationReminder = arrivalPlace != null
         val clarifyingQuestions = buildList {
-            if (intentType == IntentType.REMINDER && timeExtraction is TimeExtraction.None) {
+            if (intentType == IntentType.REMINDER && !isLocationReminder && timeExtraction is TimeExtraction.None) {
                 add(ClarifyingQuestion("time", "¿A qué hora?"))
             }
-            if (intentType == IntentType.REMINDER && timeExtraction is TimeExtraction.Ambiguous) {
+            if (intentType == IntentType.REMINDER && !isLocationReminder && timeExtraction is TimeExtraction.Ambiguous) {
                 add(ClarifyingQuestion("time_of_day", "¿De la mañana o de la tarde?"))
             }
             if (intentType == IntentType.PREPARE_EVENT && !hasDepartureTime) {
@@ -66,7 +72,9 @@ class MockAIProvider @Inject constructor(
                     ),
                 )
             }
-            if (intentType == IntentType.REMINDER && resolvedTime != null) {
+            if (arrivalPlace != null) {
+                add(ReminderDraft(trigger = ReminderTrigger.NEAR_LOCATION, message = text, place = arrivalPlace))
+            } else if (intentType == IntentType.REMINDER && resolvedTime != null) {
                 add(ReminderDraft(trigger = ReminderTrigger.EXACT_TIME, message = text))
             }
         }
@@ -252,5 +260,7 @@ class MockAIProvider @Inject constructor(
         val NEARNESS_REGEX = Regex("""\bcerca( de (mí|mi|aquí|aqui))?\b""")
         // Artículo indeterminado inicial: "un restaurante" -> "restaurante".
         val LEADING_ARTICLE_REGEX = Regex("""^(un|una|unos|unas)\s+""")
+        // "cuando llegue a casa" / "al llegar al trabajo" / "a la oficina" -> lugar en grupo 2.
+        val LOCATION_ARRIVAL_REGEX = Regex("""\b(cuando llegue|al llegar)\s+al?\s+(?:la\s+|el\s+)?(\w+)""")
     }
 }

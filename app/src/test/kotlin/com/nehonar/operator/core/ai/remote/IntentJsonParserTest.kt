@@ -184,6 +184,20 @@ class IntentJsonParserTest {
     }
 
     @Test
+    fun `reminder con place se parsea para NEAR_LOCATION`() {
+        val json = """
+            {"intent_type": "REMINDER", "assistant_response": "ok",
+             "reminders": [{"trigger": "NEAR_LOCATION", "message": "Sacar la basura", "place": "casa"}]}
+        """.trimIndent()
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        val reminder = intent.reminders.single()
+        assertEquals("casa", reminder.place)
+    }
+
+    @Test
     fun `map_query en blanco o ausente queda null`() {
         val blank = IntentJsonParser.parse(
             """{"intent_type": "GENERAL_NOTE", "assistant_response": "ok", "map_query": "   "}""",

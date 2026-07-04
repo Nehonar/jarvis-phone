@@ -64,6 +64,23 @@ class PromptBuilderTest {
     }
 
     @Test
+    fun `sin lugares no incluye el bloque de lugares`() {
+        val prompt = PromptBuilder.systemPrompt(today)
+
+        assertFalse(prompt.contains("Lugares guardados"))
+    }
+
+    @Test
+    fun `con lugares incluye el bloque y la regla NEAR_LOCATION`() {
+        val prompt = PromptBuilder.systemPrompt(today, places = listOf("casa", "trabajo"))
+
+        assertTrue(prompt.contains("Lugares guardados del usuario"))
+        assertTrue(prompt.contains("- casa"))
+        assertTrue(prompt.contains("- trabajo"))
+        assertTrue(prompt.contains("NEAR_LOCATION"))
+    }
+
+    @Test
     fun `mantiene la regla de hora ambigua`() {
         val prompt = PromptBuilder.systemPrompt(today)
 

@@ -92,5 +92,6 @@ object IntentJsonParser {
     private fun ReminderJson.toDomain(): ReminderDraft = ReminderDraft(
         trigger = ReminderTrigger.entries.firstOrNull { it.name == trigger.uppercase() } ?: ReminderTrigger.NONE,
         message = message,
+        place = place?.trim()?.takeIf { it.isNotEmpty() },
     )
 }

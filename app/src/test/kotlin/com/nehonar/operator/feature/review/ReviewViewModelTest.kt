@@ -8,12 +8,17 @@ import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.MemoryFactDraft
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.ai.Priority
+import com.nehonar.operator.core.ai.ReminderDraft
+import com.nehonar.operator.core.ai.ReminderTrigger
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.testing.FakeAIProvider
 import com.nehonar.operator.testing.FakeChecklistRepository
+import com.nehonar.operator.testing.FakeGeofenceScheduler
 import com.nehonar.operator.testing.FakeMemoryRepository
 import com.nehonar.operator.testing.FakeParsedIntentRepository
+import com.nehonar.operator.testing.FakePlaceReminderRepository
+import com.nehonar.operator.testing.FakePlaceRepository
 import com.nehonar.operator.testing.FakeReminderRepository
 import com.nehonar.operator.testing.FakeReminderScheduler
 import com.nehonar.operator.testing.FakeVoiceNoteRepository
@@ -40,6 +45,9 @@ class ReviewViewModelTest {
     private val widgetRefresher = FakeWidgetRefresher()
     private val checklistRepository = FakeChecklistRepository()
     private val memoryRepository = FakeMemoryRepository()
+    private val placeRepository = FakePlaceRepository()
+    private val placeReminderRepository = FakePlaceReminderRepository()
+    private val geofenceScheduler = FakeGeofenceScheduler()
 
     private suspend fun seedNote(id: String, transcript: String, intent: ParsedIntent) {
         voiceNoteRepository.save(
@@ -66,6 +74,9 @@ class ReviewViewModelTest {
             widgetRefresher = widgetRefresher,
             checklistRepository = checklistRepository,
             memoryRepository = memoryRepository,
+            placeRepository = placeRepository,
+            placeReminderRepository = placeReminderRepository,
+            geofenceScheduler = geofenceScheduler,
         )
 
     private fun sampleIntent() = ParsedIntent(
@@ -173,6 +184,48 @@ class ReviewViewModelTest {
         vm.accept()
 
         assertTrue(memoryRepository.current.isEmpty())
+    }
+
+    @Test
+    fun `aceptar recordatorio por lugar crea PlaceReminder y registra geofence`() = runTest {
+        val place = com.nehonar.operator.core.domain.model.SavedPlace(
+            id = "p1", label = "Casa", latitude = 40.0, longitude = -3.0,
+            radiusMeters = 150f, createdAt = timeProvider.now(),
+        )
+        placeRepository.save(place)
+        val intent = sampleIntent().copy(
+            intentType = IntentType.REMINDER,
+            reminders = listOf(
+                ReminderDraft(ReminderTrigger.NEAR_LOCATION, "Sacar la basura", place = "casa"),
+            ),
+        )
+        seedNote("n1", "cuando llegue a casa recuérdame sacar la basura", intent)
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        val reminder = placeReminderRepository.current.values.single()
+        assertEquals("Sacar la basura", reminder.message)
+        assertEquals("p1", reminder.placeId)
+        assertEquals("Casa", reminder.placeLabel)
+        assertEquals(listOf("p1"), geofenceScheduler.registered.map { it.id })
+    }
+
+    @Test
+    fun `recordatorio por lugar sin lugar guardado no crea nada`() = runTest {
+        val intent = sampleIntent().copy(
+            intentType = IntentType.REMINDER,
+            reminders = listOf(
+                ReminderDraft(ReminderTrigger.NEAR_LOCATION, "Sacar la basura", place = "casa"),
+            ),
+        )
+        seedNote("n1", "cuando llegue a casa recuérdame sacar la basura", intent)
+        val vm = viewModel("n1")
+
+        vm.accept()
+
+        assertTrue(placeReminderRepository.current.isEmpty())
+        assertTrue(geofenceScheduler.registered.isEmpty())
     }
 
     @Test

@@ -41,6 +41,7 @@ fun HomeScreen(
     onOpenReminders: () -> Unit,
     onOpenPrep: () -> Unit,
     onOpenMemory: () -> Unit,
+    onOpenPlaces: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -215,17 +216,24 @@ fun HomeScreen(
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OperatorButton(
+                text = "PLACES",
+                onClick = onOpenPlaces,
+                modifier = Modifier.weight(1f),
+                accent = OperatorColors.Cyan,
+            )
+            OperatorButton(
                 text = "LOG",
                 onClick = onOpenHistory,
                 modifier = Modifier.weight(1f),
                 accent = OperatorColors.Cyan,
             )
-            OperatorButton(
-                text = "CONFIG",
-                onClick = onOpenSettings,
-                modifier = Modifier.weight(1f),
-                accent = OperatorColors.TextDim,
-            )
         }
+        Spacer(Modifier.height(8.dp))
+        OperatorButton(
+            text = "CONFIG",
+            onClick = onOpenSettings,
+            modifier = Modifier.fillMaxWidth(),
+            accent = OperatorColors.TextDim,
+        )
     }
 }

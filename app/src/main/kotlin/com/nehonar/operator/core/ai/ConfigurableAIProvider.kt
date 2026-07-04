@@ -5,6 +5,7 @@ import com.nehonar.operator.core.ai.remote.RemoteAIProviderConfig
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.domain.repository.MemoryRepository
+import com.nehonar.operator.core.domain.repository.PlaceRepository
 import com.nehonar.operator.core.datastore.OperatorPreferences
 import com.nehonar.operator.core.security.ApiKeyStore
 import javax.inject.Inject
@@ -24,6 +25,7 @@ class ConfigurableAIProvider @Inject constructor(
     private val timeProvider: TimeProvider,
     private val calendarRepository: CalendarRepository,
     private val memoryRepository: MemoryRepository,
+    private val placeRepository: PlaceRepository,
 ) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult {
@@ -46,7 +48,8 @@ class ConfigurableAIProvider @Inject constructor(
             model = model.ifBlank { providerType.defaultModel.orEmpty() },
             apiKey = apiKey,
         )
-        return RemoteAIProvider(config, httpClient, timeProvider, calendarRepository, memoryRepository)
-            .parseVoiceNote(transcript)
+        return RemoteAIProvider(
+            config, httpClient, timeProvider, calendarRepository, memoryRepository, placeRepository,
+        ).parseVoiceNote(transcript)
     }
 }

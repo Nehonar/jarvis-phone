@@ -186,6 +186,24 @@ class MockAIProviderTest {
     }
 
     @Test
+    fun `cuando llegue a casa crea un recordatorio por lugar sin preguntar hora`() = runTest {
+        val result = parse("cuando llegue a casa recuérdame sacar la basura")
+
+        assertEquals(IntentType.REMINDER, result.intentType)
+        val draft = result.reminders.single { it.trigger == ReminderTrigger.NEAR_LOCATION }
+        assertEquals("casa", draft.place)
+        assertTrue(result.clarifyingQuestions.isEmpty())
+    }
+
+    @Test
+    fun `al llegar al trabajo tambien reconoce el lugar`() = runTest {
+        val result = parse("al llegar al trabajo recuérdame fichar")
+
+        val draft = result.reminders.single { it.trigger == ReminderTrigger.NEAR_LOCATION }
+        assertEquals("trabajo", draft.place)
+    }
+
+    @Test
     fun `texto sin disparadores es UNKNOWN`() = runTest {
         val result = parse("hola qué tal todo bien")
 

@@ -13,6 +13,7 @@ object PromptBuilder {
         today: LocalDate,
         agenda: List<String> = emptyList(),
         memoryFacts: List<String> = emptyList(),
+        places: List<String> = emptyList(),
     ): String {
         val dayName = today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es")).lowercase()
         val agendaBlock = if (agenda.isEmpty()) {
@@ -38,6 +39,21 @@ object PromptBuilder {
         sin repetirlos como hechos nuevos.
             """.trimEnd()
         }
+        val placesBlock = if (places.isEmpty()) {
+            ""
+        } else {
+            """
+
+        Lugares guardados del usuario:
+        ${places.joinToString("\n        ") { "- $it" }}
+        Si la nota pide avisar al LLEGAR a uno de estos lugares ("cuando llegue a
+        casa", "al llegar al trabajo"), crea un reminder con trigger
+        "NEAR_LOCATION" y pon en su campo "place" la etiqueta exacta del lugar de
+        la lista. Si el lugar mencionado no está en la lista, no uses
+        NEAR_LOCATION: pídelo con una clarifying_question (el usuario debe
+        guardarlo primero).
+            """.trimEnd()
+        }
         return """
         Eres el intérprete de un operador personal privado. Conviertes una nota de voz
         transcrita en una intención estructurada. Respondes ÚNICAMENTE con un objeto
@@ -49,7 +65,7 @@ object PromptBuilder {
           "title": "string corto",
           "summary": "string, resumen breve",
           "actions": [{"type": "CARRY|BUY|CALL|PREPARE|REMEMBER|NOTE|OTHER", "label": "string", "priority": "LOW|MEDIUM|HIGH"}],
-          "reminders": [{"trigger": "BEFORE_EVENT|BEFORE_LEAVING_HOME|NEAR_LOCATION|FREE_WINDOW|EXACT_TIME|NONE", "message": "string"}],
+          "reminders": [{"trigger": "BEFORE_EVENT|BEFORE_LEAVING_HOME|NEAR_LOCATION|FREE_WINDOW|EXACT_TIME|NONE", "message": "string", "place": "etiqueta del lugar si trigger es NEAR_LOCATION, o null"}],
           "clarifying_questions": [{"field": "string", "question": "string"}],
           "assistant_response": "string, breve, estilo mayordomo distinguido",
           "needs_confirmation": true,
@@ -80,7 +96,7 @@ object PromptBuilder {
         AVISO, no la del evento — réstale N minutos a la hora del evento (reunión a
         las 19:00, avisar 5 min antes ⇒ "time": "18:55"). Si no conoces la hora del
         evento, pregúntala. La regla de ambigüedad también aplica a la hora del evento.
-$agendaBlock$memoryBlock
+$agendaBlock$memoryBlock$placesBlock
 
         Hechos memorables ("memory_facts"): si la nota contiene un dato personal
         ESTABLE que merezca recordarse (tallas, gustos, alergias, códigos, nombres

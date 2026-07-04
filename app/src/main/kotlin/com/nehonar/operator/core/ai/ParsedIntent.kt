@@ -62,6 +62,8 @@ data class ActionItem(
 data class ReminderDraft(
     val trigger: ReminderTrigger,
     val message: String,
+    /** Etiqueta del lugar cuando trigger == NEAR_LOCATION (p. ej. "casa"). Null si no aplica. */
+    val place: String? = null,
 )
 
 /** Hecho personal estable detectado en la nota; se persiste solo al aceptar. */

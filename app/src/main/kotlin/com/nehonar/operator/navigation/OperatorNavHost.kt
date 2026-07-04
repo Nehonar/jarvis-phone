@@ -11,6 +11,7 @@ import com.nehonar.operator.feature.console.ConsoleScreen
 import com.nehonar.operator.feature.history.HistoryScreen
 import com.nehonar.operator.feature.home.HomeScreen
 import com.nehonar.operator.feature.memory.MemoryScreen
+import com.nehonar.operator.feature.places.PlacesScreen
 import com.nehonar.operator.feature.prep.PrepScreen
 import com.nehonar.operator.feature.reminders.RemindersScreen
 import com.nehonar.operator.feature.review.ReviewScreen
@@ -33,6 +34,7 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
                 onOpenReminders = { navController.navigate(RemindersRoute) },
                 onOpenPrep = { navController.navigate(PrepRoute) },
                 onOpenMemory = { navController.navigate(MemoryRoute) },
+                onOpenPlaces = { navController.navigate(PlacesRoute) },
             )
         }
         composable<CaptureRoute>(
@@ -75,6 +77,9 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
         }
         composable<MemoryRoute> {
             MemoryScreen(onBack = { navController.popBackStack() })
+        }
+        composable<PlacesRoute> {
+            PlacesScreen(onBack = { navController.popBackStack() })
         }
     }
 }
