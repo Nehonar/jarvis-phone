@@ -220,3 +220,19 @@ en `MockAIProvider`:
   franja (sigue siendo ambigua); y "hoy a las 8 **de la mañana**" no debe
   interpretarse como fecha de mañana (bug del mock corregido: la franja se
   elimina antes de extraer la fecha).
+
+## D-014 · Avisos con antelación y mensajes autocontenidos
+
+**Fecha:** 2026-07-04 · **Origen:** usuario (fricción real) · **Tipo:** regla de producto
+
+Caso real: "para la reunión avísame 5 minutos antes" produjo un recordatorio
+con mensaje "su reunión comienza en cinco minutos", visible en el widget horas
+antes de dispararse (absurdo fuera del momento del aviso). Dos reglas nuevas
+en `PromptBuilder`:
+
+- **Antelación:** en "avísame N minutos antes de X", `time` es la hora del
+  aviso (hora del evento menos N); si la hora del evento no se conoce, se
+  pregunta. La regla de hora ambigua (D-013) aplica también a la hora del evento.
+- **Mensajes autocontenidos:** `reminders[].message` debe leerse bien en
+  cualquier momento (listas, widget), así que siempre con hora absoluta
+  ("Reunión a las 19:00"), nunca con relativos al disparo ("en cinco minutos").
