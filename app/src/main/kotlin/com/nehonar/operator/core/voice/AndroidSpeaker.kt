@@ -2,6 +2,7 @@ package com.nehonar.operator.core.voice
 
 import android.content.Context
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import com.nehonar.operator.core.common.di.ApplicationScope
 import com.nehonar.operator.core.datastore.OperatorPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -9,6 +10,9 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -33,6 +37,9 @@ class AndroidSpeaker @Inject constructor(
     @Volatile
     private var voiceEnabled = true
 
+    private val _isSpeaking = MutableStateFlow(false)
+    override val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
+
     // Tipo explícito: el listener de init referencia `tts`, y sin la anotación el
     // compilador entra en inferencia recursiva sobre su propia inicialización.
     private val tts: TextToSpeech = TextToSpeech(context) { status ->
@@ -43,6 +50,13 @@ class AndroidSpeaker @Inject constructor(
     }
 
     init {
+        // Marca cuándo el operador está hablando, para que la consola reaccione.
+        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) { _isSpeaking.value = true }
+            override fun onDone(utteranceId: String?) { _isSpeaking.value = false }
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) { _isSpeaking.value = false }
+        })
         scope.launch {
             preferences.voiceEnabled.collect { enabled ->
                 voiceEnabled = enabled
@@ -59,6 +73,7 @@ class AndroidSpeaker @Inject constructor(
 
     override fun stop() {
         if (ready) tts.stop()
+        _isSpeaking.value = false
     }
 
     /** es-ES si está disponible; si no, cualquier español; si no, el idioma por defecto. */

@@ -29,6 +29,7 @@ fun ConsoleScreen(
     viewModel: ConsoleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val speaking by viewModel.isSpeaking.collectAsStateWithLifecycle()
 
     Column(
         Modifier
@@ -47,6 +48,7 @@ fun ConsoleScreen(
 
         ConsoleVisualization(
             state = state,
+            speaking = speaking,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),

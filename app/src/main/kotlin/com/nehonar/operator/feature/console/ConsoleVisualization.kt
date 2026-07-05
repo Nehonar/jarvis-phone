@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -44,21 +45,34 @@ private data class Edge(val a: Int, val b: Int)
  * Nube de partículas viva: cientos de puntos distribuidos en una esfera que gira
  * despacio, con líneas finas entre vecinos (aspecto de nebulosa / red 3D). Cada
  * dato real (recordatorio/acción/nota) ilumina un punto con su color. El brillo,
- * la velocidad de giro y el pulso central crecen con la actividad. Todo en un
- * único Canvas; el loop se cancela al salir de la pantalla.
+ * la velocidad de giro y el pulso central crecen con la actividad — y sobre todo
+ * cuando el operador [speaking] habla, la nube se enciende y se expande. Todo en
+ * un único Canvas; el loop se cancela al salir de la pantalla.
  */
 @Composable
 fun ConsoleVisualization(
     state: ConsoleUiState,
     modifier: Modifier = Modifier,
+    speaking: Boolean = false,
 ) {
     var timeSeconds by remember { mutableFloatStateOf(0f) }
     var burstStart by remember { mutableFloatStateOf(Float.NEGATIVE_INFINITY) }
+    // Energía de voz suavizada (0..1): sube al hablar, baja al callar, sin saltos.
+    var voiceEnergy by remember { mutableFloatStateOf(0f) }
+    val speakingState = rememberUpdatedState(speaking)
 
     LaunchedEffect(Unit) {
         val startNanos = withFrameNanos { it }
+        var prevNanos = startNanos
         while (true) {
-            withFrameNanos { now -> timeSeconds = (now - startNanos) / 1_000_000_000f }
+            withFrameNanos { now ->
+                timeSeconds = (now - startNanos) / 1_000_000_000f
+                val dt = ((now - prevNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+                prevNanos = now
+                val target = if (speakingState.value) 1f else 0f
+                // Suavizado exponencial (ataque/caída ~0.18s), independiente del framerate.
+                voiceEnergy += (target - voiceEnergy) * (dt / (dt + 0.18f))
+            }
         }
     }
 
@@ -84,10 +98,13 @@ fun ConsoleVisualization(
         },
     ) {
         val t = timeSeconds
+        val energy = voiceEnergy
         val center = Offset(size.width / 2f, size.height / 2f)
-        val sphereRadius = min(size.width, size.height) / 2f * 0.82f
-        val brightness = 0.72f + 0.28f * state.activityLevel
-        val rotationSpeed = 0.14f + 0.16f * state.activityLevel
+        // Al hablar, la nube "respira" y se expande un poco (vibración con la voz).
+        val expansion = 1f + 0.09f * energy + 0.02f * energy * sin(t * 26f)
+        val sphereRadius = min(size.width, size.height) / 2f * 0.82f * expansion
+        val brightness = 0.72f + 0.28f * state.activityLevel + 0.55f * energy
+        val rotationSpeed = 0.14f + 0.16f * state.activityLevel + 0.30f * energy
 
         // Rotación de la nube (giro lento en Y + ligero cabeceo en X).
         val ay = t * rotationSpeed
@@ -112,10 +129,10 @@ fun ConsoleVisualization(
             depth[i] = ((z2 + 1f) / 2f).coerceIn(0f, 1f)
         }
 
-        drawCoreGlow(center, sphereRadius, t, state.activityLevel)
+        drawCoreGlow(center, sphereRadius, t, state.activityLevel + energy)
         drawEdges(edges, projX, projY, depth, brightness)
-        drawPoints(points, projX, projY, depth, highlights, t, brightness)
-        drawPulse(center, sphereRadius, t, state.activityLevel)
+        drawPoints(points, projX, projY, depth, highlights, t, brightness, energy)
+        drawPulse(center, sphereRadius, t, state.activityLevel, energy)
         drawBurst(center, sphereRadius, t - burstStart)
     }
 }
@@ -193,18 +210,24 @@ private fun DrawScope.drawPoints(
     highlights: Map<Int, Color>,
     t: Float,
     brightness: Float,
+    energy: Float,
 ) {
     // De atrás hacia delante, para que los cercanos queden por encima.
     val order = points.indices.sortedBy { depth[it] }
+    // Al hablar, los puntos titilan más rápido y crecen un poco: la nube "vibra".
+    val sizeBoost = 1f + 0.6f * energy
     order.forEach { i ->
         val d = depth[i]
-        val twinkle = 0.6f + 0.4f * (0.5f + 0.5f * sin(t * points[i].twinkleSpeed + points[i].phase))
+        val speed = points[i].twinkleSpeed * (1f + 2.2f * energy)
+        val twinkle = 0.6f + 0.4f * (0.5f + 0.5f * sin(t * speed + points[i].phase))
         val pos = Offset(projX[i], projY[i])
-        val radius = (0.7f + 1.6f * d).dp.toPx()
+        val radius = (0.7f + 1.6f * d).dp.toPx() * sizeBoost
         val highlight = highlights[i]
         if (highlight == null) {
             drawCircle(
-                color = OperatorColors.Phosphor.copy(alpha = (0.12f + 0.5f * d) * twinkle * brightness),
+                color = OperatorColors.Phosphor.copy(
+                    alpha = ((0.12f + 0.5f * d) * twinkle * brightness).coerceAtMost(1f),
+                ),
                 radius = radius,
                 center = pos,
             )
@@ -238,15 +261,21 @@ private fun DrawScope.drawCoreGlow(center: Offset, sphereRadius: Float, t: Float
     )
 }
 
-private fun DrawScope.drawPulse(center: Offset, sphereRadius: Float, t: Float, activity: Float) {
-    // Más actividad, pulsos más frecuentes: de uno cada 3.6s (vacía) a uno cada 1.4s.
-    val period = 3.6f - 2.2f * activity
+private fun DrawScope.drawPulse(
+    center: Offset,
+    sphereRadius: Float,
+    t: Float,
+    activity: Float,
+    energy: Float,
+) {
+    // Más actividad / voz, pulsos más frecuentes e intensos: de uno cada 3.6s a ~1s.
+    val period = 3.6f - 2.2f * activity - 0.8f * energy
     val progress = (t / period) % 1f
     drawCircle(
-        color = OperatorColors.Phosphor.copy(alpha = (1f - progress) * 0.22f),
+        color = OperatorColors.Phosphor.copy(alpha = (1f - progress) * (0.22f + 0.4f * energy)),
         radius = sphereRadius * (0.2f + 1.0f * progress),
         center = center,
-        style = Stroke(width = 1.5.dp.toPx()),
+        style = Stroke(width = (1.5f + energy).dp.toPx()),
     )
 }
 

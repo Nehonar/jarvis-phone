@@ -340,12 +340,15 @@ class FakeSpeaker : Speaker {
     var stopCount = 0
         private set
 
+    override val isSpeaking = MutableStateFlow(false)
+
     override fun speak(text: String) {
         spoken += text
     }
 
     override fun stop() {
         stopCount++
+        isSpeaking.value = false
     }
 }
 

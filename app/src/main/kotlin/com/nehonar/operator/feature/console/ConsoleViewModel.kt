@@ -9,6 +9,7 @@ import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.repository.ChecklistRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import com.nehonar.operator.core.voice.Speaker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
@@ -41,7 +42,11 @@ class ConsoleViewModel @Inject constructor(
     voiceNoteRepository: VoiceNoteRepository,
     reminderRepository: ReminderRepository,
     checklistRepository: ChecklistRepository,
+    speaker: Speaker,
 ) : ViewModel() {
+
+    /** `true` mientras el operador habla: la nube de la consola reacciona a esto. */
+    val isSpeaking: StateFlow<Boolean> = speaker.isSpeaking
 
     val uiState: StateFlow<ConsoleUiState> = combine(
         voiceNoteRepository.observeAll(),

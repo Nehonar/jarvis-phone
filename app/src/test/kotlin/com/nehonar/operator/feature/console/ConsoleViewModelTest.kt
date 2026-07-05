@@ -8,6 +8,7 @@ import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.testing.FakeChecklistRepository
 import com.nehonar.operator.testing.FakeReminderRepository
+import com.nehonar.operator.testing.FakeSpeaker
 import com.nehonar.operator.testing.FakeVoiceNoteRepository
 import com.nehonar.operator.testing.FixedTimeProvider
 import com.nehonar.operator.testing.MainDispatcherRule
@@ -34,12 +35,14 @@ class ConsoleViewModelTest {
     private val voiceNoteRepository = FakeVoiceNoteRepository()
     private val reminderRepository = FakeReminderRepository()
     private val checklistRepository = FakeChecklistRepository()
+    private val speaker = FakeSpeaker()
 
     private fun viewModel() = ConsoleViewModel(
         timeProvider = timeProvider,
         voiceNoteRepository = voiceNoteRepository,
         reminderRepository = reminderRepository,
         checklistRepository = checklistRepository,
+        speaker = speaker,
     )
 
     private fun TestScope.collectState(vm: ConsoleViewModel) {
@@ -57,6 +60,15 @@ class ConsoleViewModelTest {
         assertTrue(state.nodes.isEmpty())
         assertFalse(state.isActive)
         assertEquals(0f, state.activityLevel)
+    }
+
+    @Test
+    fun `isSpeaking refleja el estado del operador`() = runTest {
+        val vm = viewModel()
+
+        assertFalse(vm.isSpeaking.value)
+        speaker.isSpeaking.value = true
+        assertTrue(vm.isSpeaking.value)
     }
 
     @Test

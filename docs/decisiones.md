@@ -316,3 +316,12 @@ cercanos—, en contraste con las "bolitas orbitando" en anillos de la Fase 8.
 Se mantiene la identidad cromática del operador (fósforo/cian), no el morado de
 la referencia: lo que pedía el usuario era la **forma** (partículas), no la
 paleta. El contrato (`ConsoleUiState`, `NodeKind`) no cambia.
+
+**Ampliación (voz reactiva).** Petición posterior: que las partículas reaccionen
+cuando el operador habla. `Speaker` expone `isSpeaking: StateFlow` (marcado por el
+`UtteranceProgressListener` del TTS); `ConsoleViewModel` lo reexpone y
+`ConsoleVisualization` suaviza esa señal en una "energía de voz" (ataque/caída
+~0.18s) que enciende la nube: más brillo, giro más rápido, pulso más intenso y una
+ligera expansión/vibración mientras habla. La nube aparece también como presencia
+del operador en la cabecera de la conversación, para verla reaccionar al hablar.
+En silencio (voz desactivada) no hay locución y la nube queda en reposo.

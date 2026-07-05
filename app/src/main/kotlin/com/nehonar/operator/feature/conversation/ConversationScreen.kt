@@ -40,13 +40,18 @@ import com.nehonar.operator.core.design.components.ConsolePanel
 import com.nehonar.operator.core.design.components.OperatorButton
 import com.nehonar.operator.core.design.components.StatusLine
 import com.nehonar.operator.core.design.theme.OperatorColors
+import com.nehonar.operator.feature.console.ConsoleViewModel
+import com.nehonar.operator.feature.console.ConsoleVisualization
 
 @Composable
 fun ConversationScreen(
     onNavigate: (OperatorDestination) -> Unit,
     viewModel: ConversationViewModel = hiltViewModel(),
+    consoleViewModel: ConsoleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val consoleState by consoleViewModel.uiState.collectAsStateWithLifecycle()
+    val speaking by consoleViewModel.isSpeaking.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val listState = rememberLazyListState()
 
@@ -91,6 +96,15 @@ fun ConversationScreen(
                 accent = if (silence) OperatorColors.TextDim else OperatorColors.Phosphor,
             )
         }
+
+        // Presencia del operador: la nube de partículas se enciende y vibra al hablar.
+        ConsoleVisualization(
+            state = consoleState,
+            speaking = speaking,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(170.dp),
+        )
 
         Spacer(Modifier.height(12.dp))
         Box(Modifier.weight(1f).fillMaxWidth()) {
