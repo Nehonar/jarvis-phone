@@ -62,6 +62,19 @@ class ReviewViewModelTest {
         parsedIntentRepository.save(id, intent)
     }
 
+    private val intentCommitter = com.nehonar.operator.core.domain.IntentCommitter(
+        parsedIntentRepository = parsedIntentRepository,
+        reminderRepository = reminderRepository,
+        reminderScheduler = reminderScheduler,
+        timeProvider = timeProvider,
+        widgetRefresher = widgetRefresher,
+        checklistRepository = checklistRepository,
+        memoryRepository = memoryRepository,
+        placeRepository = placeRepository,
+        placeReminderRepository = placeReminderRepository,
+        geofenceScheduler = geofenceScheduler,
+    )
+
     private fun viewModel(voiceNoteId: String, aiProvider: FakeAIProvider = FakeAIProvider()) =
         ReviewViewModel(
             savedStateHandle = SavedStateHandle(mapOf("voiceNoteId" to voiceNoteId)),
@@ -70,13 +83,9 @@ class ReviewViewModelTest {
             aiProvider = aiProvider,
             reminderRepository = reminderRepository,
             reminderScheduler = reminderScheduler,
-            timeProvider = timeProvider,
             widgetRefresher = widgetRefresher,
             checklistRepository = checklistRepository,
-            memoryRepository = memoryRepository,
-            placeRepository = placeRepository,
-            placeReminderRepository = placeReminderRepository,
-            geofenceScheduler = geofenceScheduler,
+            intentCommitter = intentCommitter,
         )
 
     private fun sampleIntent() = ParsedIntent(

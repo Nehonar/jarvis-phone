@@ -6,32 +6,15 @@ import androidx.lifecycle.viewModelScope
 import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.ai.ParsedIntent
-import com.nehonar.operator.core.common.TimeProvider
-import com.nehonar.operator.core.ai.ReminderTrigger
-import com.nehonar.operator.core.domain.model.ChecklistItem
-import com.nehonar.operator.core.domain.model.MemoryFact
-import com.nehonar.operator.core.domain.model.PlaceReminder
-import com.nehonar.operator.core.domain.model.Reminder
-import com.nehonar.operator.core.domain.model.ReminderStatus
+import com.nehonar.operator.core.domain.IntentCommitter
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.core.domain.repository.ChecklistRepository
-import com.nehonar.operator.core.domain.repository.MemoryRepository
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
-import com.nehonar.operator.core.domain.repository.PlaceRepository
-import com.nehonar.operator.core.domain.repository.PlaceReminderRepository
 import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
-import com.nehonar.operator.core.location.GeofenceScheduler
 import com.nehonar.operator.core.notifications.ReminderScheduler
 import com.nehonar.operator.core.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneId
-import java.time.format.DateTimeParseException
-import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,13 +41,9 @@ class ReviewViewModel @Inject constructor(
     private val aiProvider: AIProvider,
     private val reminderRepository: ReminderRepository,
     private val reminderScheduler: ReminderScheduler,
-    private val timeProvider: TimeProvider,
     private val widgetRefresher: WidgetRefresher,
     private val checklistRepository: ChecklistRepository,
-    private val memoryRepository: MemoryRepository,
-    private val placeRepository: PlaceRepository,
-    private val placeReminderRepository: PlaceReminderRepository,
-    private val geofenceScheduler: GeofenceScheduler,
+    private val intentCommitter: IntentCommitter,
 ) : ViewModel() {
 
     // Navigation type-safe expone cada campo de ReviewRoute como argumento plano
@@ -129,96 +108,8 @@ class ReviewViewModel @Inject constructor(
         val current = _uiState.value
         if (current !is ReviewUiState.Content) return
         viewModelScope.launch {
-            parsedIntentRepository.save(voiceNoteId, current.intent.copy(needsConfirmation = false))
-            scheduleReminderIfResolved(current.intent)
-            saveChecklistItems(current.intent)
-            saveMemoryFacts(current.intent)
-            savePlaceReminders(current.intent)
+            intentCommitter.commit(voiceNoteId, current.intent)
             _uiState.value = ReviewUiState.Done
-        }
-    }
-
-    /**
-     * Cada recordatorio con trigger NEAR_LOCATION cuya etiqueta de lugar coincide con
-     * un lugar guardado se persiste como PlaceReminder y (re)registra su geofence. Si
-     * el lugar no existe aún, se ignora en silencio (la IA ya debería haberlo pedido).
-     */
-    private suspend fun savePlaceReminders(intent: ParsedIntent) {
-        val locationDrafts = intent.reminders.filter {
-            it.trigger == ReminderTrigger.NEAR_LOCATION && it.place != null
-        }
-        if (locationDrafts.isEmpty()) return
-        val placesByLabel = placeRepository.getAll().associateBy { it.label.lowercase() }
-        locationDrafts.forEach { draft ->
-            val place = placesByLabel[draft.place!!.lowercase()] ?: return@forEach
-            placeReminderRepository.save(
-                PlaceReminder(
-                    id = UUID.randomUUID().toString(),
-                    voiceNoteId = voiceNoteId,
-                    message = draft.message,
-                    placeId = place.id,
-                    placeLabel = place.label,
-                    status = ReminderStatus.PENDING,
-                    createdAt = timeProvider.now(),
-                ),
-            )
-            geofenceScheduler.register(place)
-        }
-    }
-
-    private suspend fun saveMemoryFacts(intent: ParsedIntent) {
-        intent.memoryFacts.forEach { draft ->
-            memoryRepository.save(
-                MemoryFact(
-                    id = UUID.randomUUID().toString(),
-                    topic = draft.topic,
-                    fact = draft.fact,
-                    createdAt = timeProvider.now(),
-                ),
-            )
-        }
-    }
-
-    private suspend fun saveChecklistItems(intent: ParsedIntent) {
-        intent.actions.forEach { action ->
-            checklistRepository.save(
-                ChecklistItem(
-                    id = UUID.randomUUID().toString(),
-                    voiceNoteId = voiceNoteId,
-                    type = action.type,
-                    label = action.label,
-                    done = false,
-                    createdAt = timeProvider.now(),
-                ),
-            )
-        }
-    }
-
-    private suspend fun scheduleReminderIfResolved(intent: ParsedIntent) {
-        val triggerAt = resolveTriggerInstant(intent) ?: return
-        if (!triggerAt.isAfter(timeProvider.now())) return
-        val message = intent.reminders.firstOrNull()?.message ?: intent.assistantResponse
-        val reminder = Reminder(
-            id = UUID.randomUUID().toString(),
-            voiceNoteId = voiceNoteId,
-            message = message,
-            triggerAt = triggerAt,
-            status = ReminderStatus.PENDING,
-        )
-        reminderRepository.save(reminder)
-        reminderScheduler.schedule(reminder)
-        widgetRefresher.refresh()
-    }
-
-    private fun resolveTriggerInstant(intent: ParsedIntent): Instant? {
-        val date = intent.date ?: return null
-        val time = intent.time ?: return null
-        return try {
-            LocalDateTime.of(LocalDate.parse(date), LocalTime.parse(time))
-                .atZone(ZoneId.systemDefault())
-                .toInstant()
-        } catch (e: DateTimeParseException) {
-            null
         }
     }
 

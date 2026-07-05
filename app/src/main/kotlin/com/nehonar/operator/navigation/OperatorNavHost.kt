@@ -8,6 +8,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navDeepLink
 import com.nehonar.operator.feature.capture.CaptureScreen
 import com.nehonar.operator.feature.console.ConsoleScreen
+import com.nehonar.operator.feature.conversation.ConversationScreen
+import com.nehonar.operator.feature.conversation.OperatorDestination
 import com.nehonar.operator.feature.history.HistoryScreen
 import com.nehonar.operator.feature.home.HomeScreen
 import com.nehonar.operator.feature.memory.MemoryScreen
@@ -22,9 +24,16 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
-        startDestination = HomeRoute,
+        startDestination = ConversationRoute,
         modifier = modifier,
     ) {
+        composable<ConversationRoute> {
+            ConversationScreen(
+                onNavigate = { destination ->
+                    navController.navigate(destination.toRoute())
+                },
+            )
+        }
         composable<HomeRoute> {
             HomeScreen(
                 onOpenCapture = { navController.navigate(CaptureRoute) },
@@ -82,4 +91,16 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
             PlacesScreen(onBack = { navController.popBackStack() })
         }
     }
+}
+
+/** Traduce un destino pedido por voz a su ruta de navegación. */
+private fun OperatorDestination.toRoute(): Any = when (this) {
+    OperatorDestination.REMINDERS -> RemindersRoute
+    OperatorDestination.PREP -> PrepRoute
+    OperatorDestination.MEMORY -> MemoryRoute
+    OperatorDestination.PLACES -> PlacesRoute
+    OperatorDestination.HISTORY -> HistoryRoute
+    OperatorDestination.CONSOLE -> ConsoleRoute
+    OperatorDestination.SETTINGS -> SettingsRoute
+    OperatorDestination.HOME -> HomeRoute
 }

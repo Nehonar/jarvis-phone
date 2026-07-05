@@ -92,3 +92,41 @@ Ajustes.
 - [ ] Tests: el operador habla `assistant_response` al terminar la nota y también
       la pregunta de aclaración; un fallo de IA no intenta hablar
 - [ ] En dispositivo: confirma en voz alta y el toggle de Ajustes lo silencia
+
+## Objetivo del paso 3 (pantalla de conversación)
+
+Operator arranca en una pantalla de conversación: hablas o escribes, el operador
+responde (voz en modo hablar, texto en modo silencio), ejecuta la orden al vuelo
+y muestra tarjetas de resultado. El menú deja de ser una rejilla visible: las
+secciones se abren por voz ("ábreme los recordatorios").
+
+## Alcance del paso 3
+
+**Incluye:** `ConversationScreen` + `ConversationViewModel` como destino inicial;
+registro de turnos (usuario/operador) con tarjetas de resultado (recordatorio,
+checklist, memoria, cercanía, aviso por lugar); botón de silencio que alterna
+modo hablar (voz, sin caja de texto) y modo silencio (texto, con caja abajo),
+respaldado por la preferencia `VoiceModePreference`; ejecución directa de la
+orden vía `IntentCommitter` (extraído de `ReviewViewModel`, sin duplicar); menú
+por voz con `NavigationMatcher` (abre secciones sin rejilla visible); feedback
+hablado en cada resultado. Home sigue accesible ("ábreme el inicio").
+
+**NO incluye:** manos libres desde el bloqueo (Fase 16).
+
+## Diseño (paso 3)
+
+- `IntentCommitter` centraliza la persistencia (recordatorio/checklist/memoria/
+  lugar + programación) que antes vivía en `ReviewViewModel.accept()`; ahora lo
+  usan tanto la revisión como la conversación.
+- El silencio es la misma bandera que muta la voz (D-015), tras
+  `VoiceModePreference` para poder testear el ViewModel sin DataStore.
+- La navegación por voz exige verbo de apertura + sección, para no confundir una
+  orden ("recuérdame X") ni una pregunta ("¿qué recordatorios tengo?").
+
+## Definición de terminado (paso 3)
+
+- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
+- [ ] Tests: orden escrita ejecuta y da feedback; navegación por voz abre sin IA;
+      pregunta responde sin efectos; bucle de aclaración; silencio → modo texto;
+      `NavigationMatcher` distingue navegación de orden/pregunta
+- [ ] En dispositivo: hablar/silenciar, tarjetas de resultado, abrir por voz

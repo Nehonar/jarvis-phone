@@ -3,6 +3,9 @@ package com.nehonar.operator.navigation
 import kotlinx.serialization.Serializable
 
 @Serializable
+data object ConversationRoute
+
+@Serializable
 data object HomeRoute
 
 @Serializable

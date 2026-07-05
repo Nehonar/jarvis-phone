@@ -8,6 +8,7 @@ import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.calendar.CalendarEvent
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
+import com.nehonar.operator.core.datastore.VoiceModePreference
 import com.nehonar.operator.core.domain.model.ChecklistItem
 import com.nehonar.operator.core.domain.model.MemoryFact
 import com.nehonar.operator.core.domain.model.PlaceReminder
@@ -345,6 +346,16 @@ class FakeSpeaker : Speaker {
 
     override fun stop() {
         stopCount++
+    }
+}
+
+class FakeVoiceModePreference(initial: Boolean = true) : VoiceModePreference {
+
+    private val state = MutableStateFlow(initial)
+    override val enabled: Flow<Boolean> = state
+
+    override suspend fun setEnabled(enabled: Boolean) {
+        state.value = enabled
     }
 }
 
