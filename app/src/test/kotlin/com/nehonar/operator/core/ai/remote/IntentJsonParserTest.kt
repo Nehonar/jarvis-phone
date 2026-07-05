@@ -170,6 +170,19 @@ class IntentJsonParserTest {
     }
 
     @Test
+    fun `intent_type QUERY se mapea y conserva la respuesta`() {
+        val json = """
+            {"intent_type": "QUERY", "assistant_response": "Mañana tiene la revisión médica a las 08:00, señor."}
+        """.trimIndent()
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertEquals(IntentType.QUERY, intent.intentType)
+        assertEquals("Mañana tiene la revisión médica a las 08:00, señor.", intent.assistantResponse)
+    }
+
+    @Test
     fun `map_query se parsea para NEARBY_SEARCH`() {
         val json = """
             {"intent_type": "NEARBY_SEARCH", "assistant_response": "ok",

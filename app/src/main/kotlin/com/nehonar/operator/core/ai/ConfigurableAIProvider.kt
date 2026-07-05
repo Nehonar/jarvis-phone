@@ -4,8 +4,10 @@ import com.nehonar.operator.core.ai.remote.RemoteAIProvider
 import com.nehonar.operator.core.ai.remote.RemoteAIProviderConfig
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
+import com.nehonar.operator.core.domain.repository.ChecklistRepository
 import com.nehonar.operator.core.domain.repository.MemoryRepository
 import com.nehonar.operator.core.domain.repository.PlaceRepository
+import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.datastore.OperatorPreferences
 import com.nehonar.operator.core.security.ApiKeyStore
 import javax.inject.Inject
@@ -26,6 +28,8 @@ class ConfigurableAIProvider @Inject constructor(
     private val calendarRepository: CalendarRepository,
     private val memoryRepository: MemoryRepository,
     private val placeRepository: PlaceRepository,
+    private val reminderRepository: ReminderRepository,
+    private val checklistRepository: ChecklistRepository,
 ) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult {
@@ -50,6 +54,7 @@ class ConfigurableAIProvider @Inject constructor(
         )
         return RemoteAIProvider(
             config, httpClient, timeProvider, calendarRepository, memoryRepository, placeRepository,
+            reminderRepository, checklistRepository,
         ).parseVoiceNote(transcript)
     }
 }

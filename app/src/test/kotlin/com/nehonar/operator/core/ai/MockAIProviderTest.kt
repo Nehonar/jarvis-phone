@@ -204,6 +204,31 @@ class MockAIProviderTest {
     }
 
     @Test
+    fun `una pregunta con interrogante final se clasifica como QUERY sin efectos`() = runTest {
+        val result = parse("¿qué tengo que hacer mañana?")
+
+        assertEquals(IntentType.QUERY, result.intentType)
+        assertTrue(result.actions.isEmpty())
+        assertTrue(result.reminders.isEmpty())
+        assertTrue(result.clarifyingQuestions.isEmpty())
+    }
+
+    @Test
+    fun `una pregunta con comprar no dispara SHOPPING sino QUERY`() = runTest {
+        val result = parse("qué me queda por comprar")
+
+        assertEquals(IntentType.QUERY, result.intentType)
+        assertTrue(result.actions.isEmpty())
+    }
+
+    @Test
+    fun `una orden de recordatorio no se confunde con una pregunta`() = runTest {
+        val result = parse("recuérdame llamar al médico a las 9 de la mañana")
+
+        assertEquals(IntentType.REMINDER, result.intentType)
+    }
+
+    @Test
     fun `texto sin disparadores es UNKNOWN`() = runTest {
         val result = parse("hola qué tal todo bien")
 

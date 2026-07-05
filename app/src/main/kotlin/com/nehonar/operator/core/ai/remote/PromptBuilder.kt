@@ -14,6 +14,7 @@ object PromptBuilder {
         agenda: List<String> = emptyList(),
         memoryFacts: List<String> = emptyList(),
         places: List<String> = emptyList(),
+        currentState: List<String> = emptyList(),
     ): String {
         val dayName = today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("es")).lowercase()
         val agendaBlock = if (agenda.isEmpty()) {
@@ -21,11 +22,20 @@ object PromptBuilder {
         } else {
             """
 
-        Agenda de hoy del usuario (hora local):
+        Agenda del usuario (hoy y mañana, hora local):
         ${agenda.joinToString("\n        ") { "- $it" }}
         Si la nota se refiere a uno de estos eventos ("la reunión", "la cita"…),
         usa su hora real para resolver "date"/"time" y las antelaciones — en ese
         caso la hora NO es ambigua y no debes preguntar la franja.
+            """.trimEnd()
+        }
+        val stateBlock = if (currentState.isEmpty()) {
+            ""
+        } else {
+            """
+
+        Estado actual del operador (para responder preguntas del usuario):
+        ${currentState.joinToString("\n        ") { "- $it" }}
             """.trimEnd()
         }
         val memoryBlock = if (memoryFacts.isEmpty()) {
@@ -60,7 +70,7 @@ object PromptBuilder {
         JSON válido, sin texto adicional, sin markdown, con exactamente estos campos:
 
         {
-          "intent_type": "REMINDER|PREPARE_EVENT|CARRY_ITEMS|SHOPPING|CALL_OR_MESSAGE|MOOD_OR_ENERGY|IDEA_CAPTURE|DAILY_CONSTRAINT|NEARBY_SEARCH|GENERAL_NOTE|UNKNOWN",
+          "intent_type": "REMINDER|PREPARE_EVENT|CARRY_ITEMS|SHOPPING|CALL_OR_MESSAGE|MOOD_OR_ENERGY|IDEA_CAPTURE|DAILY_CONSTRAINT|NEARBY_SEARCH|QUERY|GENERAL_NOTE|UNKNOWN",
           "confidence": 0.0 a 1.0,
           "title": "string corto",
           "summary": "string, resumen breve",
@@ -96,7 +106,15 @@ object PromptBuilder {
         AVISO, no la del evento — réstale N minutos a la hora del evento (reunión a
         las 19:00, avisar 5 min antes ⇒ "time": "18:55"). Si no conoces la hora del
         evento, pregúntala. La regla de ambigüedad también aplica a la hora del evento.
-$agendaBlock$memoryBlock$placesBlock
+$agendaBlock$memoryBlock$placesBlock$stateBlock
+
+        Preguntas del usuario ("QUERY"): si la nota es una PREGUNTA sobre sus datos
+        ("¿qué tengo mañana?", "¿cuándo es la reunión?", "¿qué me queda por
+        comprar?", "¿qué tengo pendiente?"), usa intent_type "QUERY" y RESPONDE
+        directamente en "assistant_response" usando el estado actual y la agenda de
+        arriba, en una o dos frases, estilo mayordomo. En una QUERY no generas
+        actions, reminders, memory_facts ni map_query: solo respondes. Si no tienes
+        el dato, dilo con franqueza ("No consta nada, señor").
 
         Hechos memorables ("memory_facts"): si la nota contiene un dato personal
         ESTABLE que merezca recordarse (tallas, gustos, alergias, códigos, nombres

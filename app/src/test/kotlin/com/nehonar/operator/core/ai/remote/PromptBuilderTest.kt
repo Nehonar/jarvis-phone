@@ -20,19 +20,19 @@ class PromptBuilderTest {
     fun `sin agenda no incluye el bloque de agenda`() {
         val prompt = PromptBuilder.systemPrompt(today)
 
-        assertFalse(prompt.contains("Agenda de hoy"))
+        assertFalse(prompt.contains("Agenda del usuario"))
     }
 
     @Test
     fun `con agenda incluye los eventos y la regla de resolucion`() {
         val prompt = PromptBuilder.systemPrompt(
             today,
-            agenda = listOf("11:00 Reunión de equipo", "(todo el día) Cumpleaños de Marc"),
+            agenda = listOf("HOY 11:00 Reunión de equipo", "MAÑANA (todo el día) Cumpleaños de Marc"),
         )
 
-        assertTrue(prompt.contains("Agenda de hoy del usuario"))
-        assertTrue(prompt.contains("- 11:00 Reunión de equipo"))
-        assertTrue(prompt.contains("- (todo el día) Cumpleaños de Marc"))
+        assertTrue(prompt.contains("Agenda del usuario"))
+        assertTrue(prompt.contains("- HOY 11:00 Reunión de equipo"))
+        assertTrue(prompt.contains("- MAÑANA (todo el día) Cumpleaños de Marc"))
         assertTrue(prompt.contains("usa su hora real"))
     }
 
@@ -86,5 +86,36 @@ class PromptBuilderTest {
 
         assertTrue(prompt.contains("time_of_day"))
         assertTrue(prompt.contains("¿De la mañana o de la tarde?"))
+    }
+
+    @Test
+    fun `incluye el tipo QUERY en el schema y su regla`() {
+        val prompt = PromptBuilder.systemPrompt(today)
+
+        assertTrue(prompt.contains("QUERY"))
+        assertTrue(prompt.contains("Preguntas del usuario"))
+        assertTrue(prompt.contains("assistant_response"))
+    }
+
+    @Test
+    fun `sin estado actual no incluye el bloque de estado`() {
+        val prompt = PromptBuilder.systemPrompt(today)
+
+        assertFalse(prompt.contains("Estado actual del operador"))
+    }
+
+    @Test
+    fun `con estado actual incluye el bloque para responder preguntas`() {
+        val prompt = PromptBuilder.systemPrompt(
+            today,
+            currentState = listOf(
+                "Recordatorio MAÑANA 08:00 — Médico",
+                "Pendiente (SHOPPING): leche",
+            ),
+        )
+
+        assertTrue(prompt.contains("Estado actual del operador"))
+        assertTrue(prompt.contains("- Recordatorio MAÑANA 08:00 — Médico"))
+        assertTrue(prompt.contains("- Pendiente (SHOPPING): leche"))
     }
 }

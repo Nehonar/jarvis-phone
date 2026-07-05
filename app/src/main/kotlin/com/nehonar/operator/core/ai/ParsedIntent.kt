@@ -13,6 +13,7 @@ enum class IntentType {
     IDEA_CAPTURE,
     DAILY_CONSTRAINT,
     NEARBY_SEARCH,
+    QUERY,
     GENERAL_NOTE,
     UNKNOWN,
 }

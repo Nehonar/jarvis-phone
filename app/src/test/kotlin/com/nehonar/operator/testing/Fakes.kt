@@ -317,6 +317,9 @@ class FakeCalendarRepository(
 
     override suspend fun getEventsForToday(): List<CalendarEvent> =
         if (permission) events.sortedBy { it.startAt } else emptyList()
+
+    override suspend fun getEventsForDays(days: Int): List<CalendarEvent> =
+        if (permission) events.sortedBy { it.startAt } else emptyList()
 }
 
 class FakeWidgetRefresher : WidgetRefresher {

@@ -17,6 +17,21 @@ class MockAIProvider @Inject constructor(
         val text = transcript.trim()
         val lower = text.lowercase()
 
+        // Una pregunta corta antes que nada: el mock no razona respuestas (eso lo
+        // hace el proveedor real), solo clasifica QUERY sin generar efectos.
+        if (isQuestion(lower, text)) {
+            return AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.QUERY,
+                    confidence = 0.7f,
+                    title = "QUERY",
+                    summary = text,
+                    assistantResponse = "Para responder eso necesito el proveedor de IA real, señor.",
+                    needsConfirmation = false,
+                ),
+            )
+        }
+
         val buyItems = extractItemsAfterTrigger(lower, text, BUY_TRIGGERS)
         val carryItems = extractItemsAfterTrigger(lower, text, CARRY_TRIGGERS)
         val callTarget = extractCallTarget(lower, text)
@@ -110,6 +125,13 @@ class MockAIProvider @Inject constructor(
         rest = NEARNESS_REGEX.replace(rest, " ").trim().trim('.', '!', '?', ',')
         rest = LEADING_ARTICLE_REGEX.replace(rest, "").trim()
         return rest.takeIf { it.isNotEmpty() }
+    }
+
+    /** Empieza por interrogativo o acaba en "?" (no si es una orden con "recuérdame"…). */
+    private fun isQuestion(lower: String, original: String): Boolean {
+        if (matchesAny(lower, REMINDER_TRIGGERS) || matchesAny(lower, MEMORY_TRIGGERS)) return false
+        if (original.trimEnd().endsWith("?")) return true
+        return QUESTION_STARTERS.any { lower.startsWith(it) }
     }
 
     /** "apunta que X" / "recuerda que X" ⇒ hecho memorable con el texto tal cual. */
@@ -223,6 +245,7 @@ class MockAIProvider @Inject constructor(
             IntentType.IDEA_CAPTURE -> "Idea guardada, señor. Confío en que mejore con el tiempo."
             IntentType.DAILY_CONSTRAINT -> "Restricción registrada, señor."
             IntentType.NEARBY_SEARCH -> "Búsqueda preparada, señor. Le abriré el mapa cuando lo desee."
+            IntentType.QUERY -> "Para responder eso necesito el proveedor de IA real, señor."
             IntentType.GENERAL_NOTE -> "Nota guardada, señor."
             IntentType.UNKNOWN -> "No he identificado ninguna acción clara, señor. Quizás con más detalle."
         }
@@ -237,6 +260,11 @@ class MockAIProvider @Inject constructor(
         val REMINDER_TRIGGERS = listOf("recuérdame", "recuerdame", "avísame", "avisame", "acuérdame", "acuerdame")
         val MEMORY_TRIGGERS = listOf("apunta que", "recuerda que")
         val SEARCH_TRIGGERS = listOf("búscame", "buscame", "busca", "encuéntrame", "encuentrame")
+        val QUESTION_STARTERS = listOf(
+            "qué", "que ", "cuándo", "cuando", "cuánto", "cuanto", "cuánta", "cuanta",
+            "dónde", "donde", "cómo", "como ", "quién", "quien", "cuál", "cual",
+            "tengo algo", "hay algo", "me queda",
+        )
         val PREPARE_EVENT_TRIGGERS = listOf("oficina", "gimnasio", "viaje")
         val MOOD_TRIGGERS = listOf("cansado", "cansada", "sin energía", "sin energia", "baja energía", "baja energia")
         val PM_MARKERS = listOf("mediodía", "mediodia", "tarde", "noche")

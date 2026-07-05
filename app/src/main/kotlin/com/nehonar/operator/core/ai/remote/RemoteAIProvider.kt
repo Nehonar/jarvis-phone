@@ -5,11 +5,14 @@ import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.common.formatOperatorTime
+import com.nehonar.operator.core.domain.repository.ChecklistRepository
 import com.nehonar.operator.core.domain.repository.MemoryRepository
 import com.nehonar.operator.core.domain.repository.PlaceRepository
+import com.nehonar.operator.core.domain.repository.ReminderRepository
 import java.io.IOException
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -30,6 +33,8 @@ class RemoteAIProvider(
     private val calendarRepository: CalendarRepository,
     private val memoryRepository: MemoryRepository,
     private val placeRepository: PlaceRepository,
+    private val reminderRepository: ReminderRepository,
+    private val checklistRepository: ChecklistRepository,
 ) : AIProvider {
 
     override suspend fun parseVoiceNote(transcript: String): AIParseResult = withContext(Dispatchers.IO) {
@@ -38,13 +43,20 @@ class RemoteAIProvider(
         }
 
         val zone = ZoneId.systemDefault()
-        val agenda = calendarRepository.getEventsForToday().map { event ->
-            if (event.allDay) "(todo el día) ${event.title}"
-            else "${formatOperatorTime(event.startAt, zone)} ${event.title}"
+        val today = timeProvider.today()
+        val agenda = calendarRepository.getEventsForDays(AGENDA_DAYS).map { event ->
+            val dayTag = when (event.startAt.atZone(zone).toLocalDate()) {
+                today -> "HOY"
+                today.plusDays(1) -> "MAÑANA"
+                else -> event.startAt.atZone(zone).toLocalDate().toString()
+            }
+            if (event.allDay) "$dayTag (todo el día) ${event.title}"
+            else "$dayTag ${formatOperatorTime(event.startAt, zone)} ${event.title}"
         }
         val memoryFacts = memoryRepository.getRecent(MEMORY_FACTS_IN_PROMPT)
             .map { "${it.topic}: ${it.fact}" }
         val places = placeRepository.getAll().map { it.label }
+        val currentState = buildCurrentState(zone, today)
         val requestJson = json.encodeToString(
             ChatCompletionRequest.serializer(),
             ChatCompletionRequest(
@@ -52,7 +64,7 @@ class RemoteAIProvider(
                 messages = listOf(
                     ChatMessage(
                         role = "system",
-                        content = PromptBuilder.systemPrompt(timeProvider.today(), agenda, memoryFacts, places),
+                        content = PromptBuilder.systemPrompt(today, agenda, memoryFacts, places, currentState),
                     ),
                     ChatMessage(role = "user", content = PromptBuilder.buildUserMessage(transcript)),
                 ),
@@ -82,6 +94,23 @@ class RemoteAIProvider(
         }
     }
 
+    /** Recordatorios pendientes y checklist abierta, para que la IA responda preguntas. */
+    private suspend fun buildCurrentState(zone: ZoneId, today: java.time.LocalDate): List<String> = buildList {
+        reminderRepository.getAllPending().take(STATE_ITEMS).forEach { reminder ->
+            val date = reminder.triggerAt.atZone(zone).toLocalDate()
+            val dayTag = when (date) {
+                today -> "HOY"
+                today.plusDays(1) -> "MAÑANA"
+                else -> date.toString()
+            }
+            add("Recordatorio $dayTag ${formatOperatorTime(reminder.triggerAt, zone)} — ${reminder.message}")
+        }
+        checklistRepository.observeAll().first()
+            .filter { !it.done }
+            .take(STATE_ITEMS)
+            .forEach { add("Pendiente (${it.type.name}): ${it.label}") }
+    }
+
     private fun extractContent(rawBody: String): String? = try {
         json.decodeFromString(ChatCompletionResponse.serializer(), rawBody)
             .choices.firstOrNull()?.message?.content
@@ -100,5 +129,7 @@ class RemoteAIProvider(
         val json = Json { ignoreUnknownKeys = true }
         val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         const val MEMORY_FACTS_IN_PROMPT = 50
+        const val STATE_ITEMS = 20
+        const val AGENDA_DAYS = 2
     }
 }

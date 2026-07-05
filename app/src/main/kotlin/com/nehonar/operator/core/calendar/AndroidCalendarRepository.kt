@@ -27,15 +27,18 @@ class AndroidCalendarRepository @Inject constructor(
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) ==
             PackageManager.PERMISSION_GRANTED
 
-    override suspend fun getEventsForToday(): List<CalendarEvent> = withContext(Dispatchers.IO) {
+    override suspend fun getEventsForToday(): List<CalendarEvent> = getEventsForDays(1)
+
+    override suspend fun getEventsForDays(days: Int): List<CalendarEvent> = withContext(Dispatchers.IO) {
         if (!hasPermission()) return@withContext emptyList()
 
         val zone = ZoneId.systemDefault()
         val startOfDay = timeProvider.today().atStartOfDay(zone).toInstant().toEpochMilli()
-        val endOfDay = timeProvider.today().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = timeProvider.today().plusDays(days.toLong().coerceAtLeast(1))
+            .atStartOfDay(zone).toInstant().toEpochMilli()
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon()
             .appendPath(startOfDay.toString())
-            .appendPath(endOfDay.toString())
+            .appendPath(end.toString())
             .build()
         val projection = arrayOf(
             CalendarContract.Instances.EVENT_ID,
