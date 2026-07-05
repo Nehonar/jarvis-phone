@@ -33,7 +33,9 @@ class AndroidSpeaker @Inject constructor(
     @Volatile
     private var voiceEnabled = true
 
-    private val tts = TextToSpeech(context) { status ->
+    // Tipo explícito: el listener de init referencia `tts`, y sin la anotación el
+    // compilador entra en inferencia recursiva sobre su propia inicialización.
+    private val tts: TextToSpeech = TextToSpeech(context) { status ->
         if (status == TextToSpeech.SUCCESS) {
             tts.language = pickSpanishLocale()
             ready = true
