@@ -32,6 +32,9 @@ class SettingsViewModel @Inject constructor(
     val scanlinesEnabled: StateFlow<Boolean> = preferences.scanlinesEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    val voiceEnabled: StateFlow<Boolean> = preferences.voiceEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     private val _aiState = MutableStateFlow(AiSettingsUiState())
     val aiState: StateFlow<AiSettingsUiState> = _aiState.asStateFlow()
 
@@ -57,6 +60,12 @@ class SettingsViewModel @Inject constructor(
     fun setScanlines(enabled: Boolean) {
         viewModelScope.launch {
             preferences.setScanlinesEnabled(enabled)
+        }
+    }
+
+    fun setVoice(enabled: Boolean) {
+        viewModelScope.launch {
+            preferences.setVoiceEnabled(enabled)
         }
     }
 

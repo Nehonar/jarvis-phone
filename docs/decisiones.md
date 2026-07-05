@@ -240,3 +240,25 @@ en `PromptBuilder`:
 - **Mensajes autocontenidos:** `reminders[].message` debe leerse bien en
   cualquier momento (listas, widget), así que siempre con hora absoluta
   ("Reunión a las 19:00"), nunca con relativos al disparo ("en cinco minutos").
+
+## D-015 · Voz hablada del operador (TTS): feedback en cada acción, silenciable
+
+**Fecha:** 2026-07-05 · **Origen:** usuario · **Tipo:** producto / accesibilidad
+
+El usuario quiere que Operator sea conversacional: que hable ("anotado, señor"),
+que confirme cada acción en voz alta y que responda a sus preguntas hablando, con
+la opción de silenciarlo y pasar a texto. Resolución (Fase 15, paso 2):
+
+- **Interfaz `Speaker`** en `core/voice` (`speak`, `stop`) con impl de dispositivo
+  `AndroidSpeaker` (`android.speech.tts.TextToSpeech`, voz neutra en español
+  es-ES con *fallback*), coherente con D-009: nunca imitación de un actor/personaje
+  protegido, solo un timbre del sistema. Como el resto de piezas de hardware
+  (AlarmManager, geofencing, FusedLocation), no es testeable en JVM: se verifica
+  en dispositivo y se prueba en unidad a través de un `FakeSpeaker`.
+- **Feedback siempre:** `CaptureViewModel` pide la locución de `assistant_response`
+  en cada resultado (confirmación, pregunta de aclaración o respuesta a una
+  consulta QUERY). El usuario siempre oye qué ha pasado.
+- **Silencio ("modo texto"):** preferencia `voiceEnabled` en DataStore (activada
+  por defecto). El `AndroidSpeaker` la observa y, si está en silencio, no habla y
+  corta lo que estuviera diciendo. Toggle en Ajustes ("VOZ DEL OPERADOR"). El
+  botón de silencio dentro de la conversación llega en el paso 3.

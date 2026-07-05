@@ -27,6 +27,7 @@ import com.nehonar.operator.core.location.LatLng
 import com.nehonar.operator.core.location.LocationProvider
 import com.nehonar.operator.core.notifications.ReminderScheduler
 import com.nehonar.operator.core.security.ApiKeyStore
+import com.nehonar.operator.core.voice.Speaker
 import com.nehonar.operator.core.voice.SpeechToText
 import com.nehonar.operator.core.voice.SttEvent
 import com.nehonar.operator.core.widget.WidgetRefresher
@@ -329,6 +330,21 @@ class FakeWidgetRefresher : WidgetRefresher {
 
     override fun refresh() {
         refreshCount++
+    }
+}
+
+class FakeSpeaker : Speaker {
+
+    val spoken = mutableListOf<String>()
+    var stopCount = 0
+        private set
+
+    override fun speak(text: String) {
+        spoken += text
+    }
+
+    override fun stop() {
+        stopCount++
     }
 }
 

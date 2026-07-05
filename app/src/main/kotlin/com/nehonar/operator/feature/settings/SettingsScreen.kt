@@ -43,6 +43,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val scanlinesEnabled by viewModel.scanlinesEnabled.collectAsStateWithLifecycle()
+    val voiceEnabled by viewModel.voiceEnabled.collectAsStateWithLifecycle()
     val aiState by viewModel.aiState.collectAsStateWithLifecycle()
 
     Column(
@@ -72,6 +73,38 @@ fun SettingsScreen(
                 Switch(
                     checked = scanlinesEnabled,
                     onCheckedChange = viewModel::setScanlines,
+                    colors = SwitchDefaults.colors(
+                        checkedTrackColor = OperatorColors.Phosphor,
+                        checkedThumbColor = OperatorColors.Background,
+                        uncheckedTrackColor = OperatorColors.Surface,
+                        uncheckedThumbColor = OperatorColors.TextDim,
+                        uncheckedBorderColor = OperatorColors.GridLine,
+                    ),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        ConsolePanel(title = "VOICE", modifier = Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "VOZ DEL OPERADOR",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OperatorColors.TextPrimary,
+                    )
+                    Text(
+                        text = if (voiceEnabled) "HABLA Y CONFIRMA EN VOZ ALTA" else "SILENCIO // SOLO TEXTO",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OperatorColors.TextDim,
+                    )
+                }
+                Switch(
+                    checked = voiceEnabled,
+                    onCheckedChange = viewModel::setVoice,
                     colors = SwitchDefaults.colors(
                         checkedTrackColor = OperatorColors.Phosphor,
                         checkedThumbColor = OperatorColors.Background,

@@ -9,6 +9,7 @@ import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
 import com.nehonar.operator.core.domain.repository.ParsedIntentRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import com.nehonar.operator.core.voice.Speaker
 import com.nehonar.operator.core.voice.SpeechToText
 import com.nehonar.operator.core.voice.SttError
 import com.nehonar.operator.core.voice.SttEvent
@@ -38,6 +39,7 @@ class CaptureViewModel @Inject constructor(
     private val parsedIntentRepository: ParsedIntentRepository,
     private val aiProvider: AIProvider,
     private val timeProvider: TimeProvider,
+    private val speaker: Speaker,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CaptureUiState>(CaptureUiState.Idle)
@@ -168,6 +170,10 @@ class CaptureViewModel @Inject constructor(
         when (val result = aiProvider.parseVoiceNote(transcript)) {
             is AIParseResult.Success -> {
                 val intent = result.intent
+                // El operador siempre da feedback hablado: la pregunta pendiente, la
+                // confirmación ("anotado, señor") o la respuesta a una consulta. El
+                // silencio ("modo texto") lo decide el propio Speaker según preferencia.
+                speaker.speak(intent.assistantResponse)
                 if (intent.clarifyingQuestions.isNotEmpty() && roundsLeft > 0) {
                     pendingTranscript = transcript
                     roundsLeft -= 1

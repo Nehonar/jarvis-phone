@@ -23,6 +23,14 @@ class OperatorPreferences @Inject constructor(
         dataStore.edit { prefs -> prefs[KEY_SCANLINES] = enabled }
     }
 
+    /** Voz hablada del operador. Activada por defecto: "modo hablar". */
+    val voiceEnabled: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[KEY_VOICE] ?: true }
+
+    suspend fun setVoiceEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_VOICE] = enabled }
+    }
+
     val aiProviderType: Flow<AIProviderType> = dataStore.data.map { prefs ->
         val name = prefs[KEY_AI_PROVIDER]
         AIProviderType.entries.firstOrNull { it.name == name } ?: AIProviderType.MOCK
@@ -45,6 +53,7 @@ class OperatorPreferences @Inject constructor(
 
     private companion object {
         val KEY_SCANLINES = booleanPreferencesKey("scanlines_enabled")
+        val KEY_VOICE = booleanPreferencesKey("voice_enabled")
         val KEY_AI_PROVIDER = stringPreferencesKey("ai_provider_type")
     }
 }

@@ -303,7 +303,8 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 13-A | Ubicación: búsqueda cercana vía Google Maps | **Implementada** → [`fase-13-plan.md`](fase-13-plan.md) |
 | 13-B | Ubicación: recordatorios por lugar (geofencing) | **Implementada** → [`fase-13-plan.md`](fase-13-plan.md) |
 | 15 (paso 1) | Conversacional: motor de preguntas (`QUERY` + estado actual en el prompt) | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
-| 15 (pasos 2-3) | Conversacional: voz hablada (TTS) + pantalla de conversación (modos hablar/silencio) | Pendiente → [`fase-15-plan.md`](fase-15-plan.md) |
+| 15 (paso 2) | Conversacional: voz hablada (TTS `Speaker`) + feedback en cada acción + silencio | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
+| 15 (paso 3) | Conversacional: pantalla de conversación (modos hablar/silencio) + menú por voz | Pendiente → [`fase-15-plan.md`](fase-15-plan.md) |
 | 16 | Manos libres (asistente del sistema, Opción A) | Pendiente |
 | 11, 12, 14 | Salud, email RO, backend | — |
 

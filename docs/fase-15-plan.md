@@ -6,10 +6,11 @@
 voz hablada, dos modos hablar/silencio).** Se construye en tres pasos que dejan
 la app compilable y usable en cada commit:
 
-1. **Motor de preguntas** (este paso): la IA distingue pregunta de orden y sabe
+1. **Motor de preguntas** (hecho): la IA distingue pregunta de orden y sabe
    responder con los datos reales del usuario.
-2. **Voz hablada (TTS) + feedback**: responde en voz alta y confirma cada acción.
-3. **Pantalla de conversación** (modos hablar/silencio) + menú por voz.
+2. **Voz hablada (TTS) + feedback** (hecho): responde en voz alta y confirma cada
+   acción; silenciable ("modo texto").
+3. **Pantalla de conversación** (siguiente): modos hablar/silencio + menú por voz.
 
 Después, **Fase 16** — manos libres (asistente del sistema).
 
@@ -57,3 +58,37 @@ conversación (paso 3). De momento, una pregunta fluye por el flujo actual
       mock clasifica preguntas como QUERY, parser mapea QUERY
 - [ ] Con IA real, "¿qué tengo mañana?" responde con recordatorios y eventos
       reales de mañana (dispositivo)
+
+## Objetivo del paso 2 (voz hablada + feedback)
+
+El operador confirma cada acción en voz alta ("anotado, señor") y contesta las
+preguntas hablando, con opción de silenciarlo y pasar a texto.
+
+## Alcance del paso 2
+
+**Incluye:** interfaz `Speaker` (`speak`/`stop`) en `core/voice` con impl de
+dispositivo `AndroidSpeaker` (`TextToSpeech`, voz neutra en español, D-009);
+`CaptureViewModel` pide la locución de `assistant_response` en cada resultado
+(confirmación, pregunta de aclaración o respuesta a una consulta); preferencia
+`voiceEnabled` (DataStore, activada por defecto) que el `AndroidSpeaker` observa
+para silenciar; toggle "VOZ DEL OPERADOR" en Ajustes; `FakeSpeaker` + tests.
+
+**NO incluye en este paso:** la pantalla de conversación con el botón de silencio
+integrado ni el menú por voz (paso 3). De momento el silencio se controla desde
+Ajustes.
+
+## Diseño (paso 2)
+
+- Muteo en el `Speaker`, no en el ViewModel: el `CaptureViewModel` siempre pide
+  hablar (feedback en cada acción, testeable con `FakeSpeaker`); el
+  `AndroidSpeaker` decide si suena según la preferencia. Consistente con el resto
+  de piezas de dispositivo (device-only tras interfaz + fake).
+- Voz neutra del sistema (D-009): es-ES si está disponible, con fallback a
+  cualquier español o al idioma por defecto.
+
+## Definición de terminado (paso 2)
+
+- [ ] `assembleDebug` + `testDebugUnitTest` en verde en CI
+- [ ] Tests: el operador habla `assistant_response` al terminar la nota y también
+      la pregunta de aclaración; un fallo de IA no intenta hablar
+- [ ] En dispositivo: confirma en voz alta y el toggle de Ajustes lo silencia

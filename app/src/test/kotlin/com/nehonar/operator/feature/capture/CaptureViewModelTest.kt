@@ -10,6 +10,7 @@ import com.nehonar.operator.core.voice.SttEvent
 import com.nehonar.operator.testing.FakeAIProvider
 import com.nehonar.operator.testing.FakeParsedIntentRepository
 import com.nehonar.operator.testing.FakeSequentialSpeechToText
+import com.nehonar.operator.testing.FakeSpeaker
 import com.nehonar.operator.testing.FakeSpeechToText
 import com.nehonar.operator.testing.FakeVoiceNoteRepository
 import com.nehonar.operator.testing.FixedTimeProvider
@@ -29,6 +30,7 @@ class CaptureViewModelTest {
     private val voiceNoteRepository = FakeVoiceNoteRepository()
     private val parsedIntentRepository = FakeParsedIntentRepository()
     private val timeProvider = FixedTimeProvider()
+    private val speaker = FakeSpeaker()
 
     private fun viewModel(
         events: List<SttEvent>,
@@ -40,6 +42,7 @@ class CaptureViewModelTest {
         parsedIntentRepository = parsedIntentRepository,
         aiProvider = aiProvider,
         timeProvider = timeProvider,
+        speaker = speaker,
     )
 
     @Test
@@ -81,6 +84,61 @@ class CaptureViewModelTest {
 
         val savedIntent = parsedIntentRepository.current.getValue(noteId)
         assertEquals(IntentType.SHOPPING, savedIntent.intentType)
+    }
+
+    @Test
+    fun `el operador habla la respuesta como feedback al terminar la nota`() = runTest {
+        val aiProvider = FakeAIProvider {
+            AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.SHOPPING,
+                    confidence = 0.8f,
+                    title = "SHOPPING",
+                    summary = it,
+                    assistantResponse = "Recado de compra anotado, señor.",
+                ),
+            )
+        }
+        val vm = viewModel(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("comprar fruta")),
+            aiProvider = aiProvider,
+        )
+
+        vm.startCapture()
+
+        assertTrue(vm.uiState.value is CaptureUiState.Parsed)
+        assertEquals(listOf("Recado de compra anotado, señor."), speaker.spoken)
+    }
+
+    @Test
+    fun `el operador habla tambien la pregunta de aclaracion`() = runTest {
+        val aiProvider = FakeAIProvider { transcript -> reminderMissingDepartureTime(transcript) }
+        val vm = viewModel(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("recuérdame algo")),
+            aiProvider = aiProvider,
+        )
+
+        vm.startCapture()
+
+        assertTrue(vm.uiState.value is CaptureUiState.AwaitingAnswer)
+        assertEquals(
+            listOf("Aún me falta un dato, señor: ¿A qué hora sale de casa?"),
+            speaker.spoken,
+        )
+    }
+
+    @Test
+    fun `un fallo de la IA no intenta hablar`() = runTest {
+        val aiProvider = FakeAIProvider { AIParseResult.Failure("Sin conexión") }
+        val vm = viewModel(
+            listOf(SttEvent.Ready, SttEvent.FinalResult("comprar fruta")),
+            aiProvider = aiProvider,
+        )
+
+        vm.startCapture()
+
+        assertTrue(vm.uiState.value is CaptureUiState.SavedPending)
+        assertTrue(speaker.spoken.isEmpty())
     }
 
     @Test
@@ -135,6 +193,7 @@ class CaptureViewModelTest {
             parsedIntentRepository = parsedIntentRepository,
             aiProvider = aiProvider,
             timeProvider = timeProvider,
+            speaker = speaker,
         )
 
         vm.startCapture()
@@ -171,6 +230,7 @@ class CaptureViewModelTest {
             parsedIntentRepository = parsedIntentRepository,
             aiProvider = aiProvider,
             timeProvider = timeProvider,
+            speaker = speaker,
         )
 
         vm.startCapture()

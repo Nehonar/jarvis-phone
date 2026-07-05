@@ -1,6 +1,8 @@
 package com.nehonar.operator.core.voice.di
 
+import com.nehonar.operator.core.voice.AndroidSpeaker
 import com.nehonar.operator.core.voice.AndroidSpeechToText
+import com.nehonar.operator.core.voice.Speaker
 import com.nehonar.operator.core.voice.SpeechToText
 import dagger.Binds
 import dagger.Module
@@ -15,4 +17,8 @@ abstract class VoiceModule {
     @Binds
     @Singleton
     abstract fun bindSpeechToText(impl: AndroidSpeechToText): SpeechToText
+
+    @Binds
+    @Singleton
+    abstract fun bindSpeaker(impl: AndroidSpeaker): Speaker
 }
