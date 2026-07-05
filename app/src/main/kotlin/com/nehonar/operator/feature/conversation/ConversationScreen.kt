@@ -58,8 +58,10 @@ fun ConversationScreen(
     LaunchedEffect(Unit) {
         viewModel.navigation.collect { onNavigate(it) }
     }
-    LaunchedEffect(state.turns.size) {
-        if (state.turns.isNotEmpty()) listState.animateScrollToItem(state.turns.lastIndex)
+    LaunchedEffect(state.turns.size, state.mode) {
+        if (state.mode == ConversationMode.SILENCE && state.turns.isNotEmpty()) {
+            listState.animateScrollToItem(state.turns.lastIndex)
+        }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -75,82 +77,134 @@ fun ConversationScreen(
         if (granted) viewModel.startTalking() else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "OPERATOR",
-                style = MaterialTheme.typography.titleLarge,
-                color = OperatorColors.Phosphor,
-            )
-            Spacer(Modifier.width(8.dp))
-            BlinkingCursor()
-            Spacer(Modifier.weight(1f))
-            val silence = state.mode == ConversationMode.SILENCE
-            OperatorButton(
-                text = if (silence) "🔇 TEXTO" else "🔊 VOZ",
-                onClick = viewModel::toggleMute,
-                accent = if (silence) OperatorColors.TextDim else OperatorColors.Phosphor,
+    val speakMode = state.mode == ConversationMode.SPEAK
+
+    Box(Modifier.fillMaxSize()) {
+        // En modo hablar la nube ocupa toda la pantalla (solo se ve el último
+        // mensaje del operador encima). En modo texto es una cabecera compacta.
+        if (speakMode) {
+            ConsoleVisualization(
+                state = consoleState,
+                speaking = speaking,
+                modifier = Modifier.fillMaxSize(),
             )
         }
 
-        // Presencia del operador: la nube de partículas se enciende y vibra al hablar.
-        ConsoleVisualization(
-            state = consoleState,
-            speaking = speaking,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(170.dp),
-        )
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+        ) {
+            HeaderRow(mode = state.mode, onToggleMute = viewModel::toggleMute)
 
-        Spacer(Modifier.height(12.dp))
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            if (state.turns.isEmpty()) {
-                Text(
-                    text = "Pulsa HABLAR y dime algo, señor. Puedo anotar, recordar,\n" +
-                        "buscar cerca o abrir cualquier sección si me la pides.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = OperatorColors.TextDim,
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                )
+            if (speakMode) {
+                Spacer(Modifier.weight(1f))
+                LastOperatorMessage(state)
             } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(state.turns, key = { it.id }) { turn -> TurnBubble(turn) }
+                Spacer(Modifier.height(12.dp))
+                ConsoleVisualization(
+                    state = consoleState,
+                    speaking = speaking,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp),
+                )
+                Spacer(Modifier.height(12.dp))
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if (state.turns.isEmpty()) {
+                        Text(
+                            text = "Escríbeme, señor. Puedo anotar, recordar, buscar cerca\n" +
+                                "o abrir cualquier sección si me la pides.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = OperatorColors.TextDim,
+                            modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                        )
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(state.turns, key = { it.id }) { turn -> TurnBubble(turn) }
+                        }
+                    }
                 }
             }
-        }
 
-        Spacer(Modifier.height(8.dp))
-        StatusBar(state.status)
+            Spacer(Modifier.height(8.dp))
+            StatusBar(state.status)
 
-        Spacer(Modifier.height(8.dp))
-        when (state.status) {
-            is ConversationStatus.Listening, ConversationStatus.Processing -> {
-                OperatorButton(
-                    text = if (state.status is ConversationStatus.Processing) "PROCESANDO…" else "ESCUCHANDO… (CANCELAR)",
-                    onClick = viewModel::cancelListening,
-                    modifier = Modifier.fillMaxWidth(),
-                    accent = OperatorColors.Warning,
-                )
-            }
-            else -> {
-                if (state.mode == ConversationMode.SILENCE) {
-                    TextComposer(onSend = viewModel::sendText)
-                } else {
+            Spacer(Modifier.height(8.dp))
+            when (state.status) {
+                is ConversationStatus.Listening, ConversationStatus.Processing -> {
                     OperatorButton(
-                        text = "HABLAR",
-                        onClick = onTalkClick,
+                        text = if (state.status is ConversationStatus.Processing) "PROCESANDO…" else "ESCUCHANDO… (CANCELAR)",
+                        onClick = viewModel::cancelListening,
                         modifier = Modifier.fillMaxWidth(),
+                        accent = OperatorColors.Warning,
                     )
                 }
+                else -> {
+                    if (speakMode) {
+                        OperatorButton(
+                            text = "HABLAR",
+                            onClick = onTalkClick,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        TextComposer(onSend = viewModel::sendText)
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun HeaderRow(mode: ConversationMode, onToggleMute: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "OPERATOR",
+            style = MaterialTheme.typography.titleLarge,
+            color = OperatorColors.Phosphor,
+        )
+        Spacer(Modifier.width(8.dp))
+        BlinkingCursor()
+        Spacer(Modifier.weight(1f))
+        val silence = mode == ConversationMode.SILENCE
+        OperatorButton(
+            text = if (silence) "🔇 TEXTO" else "🔊 VOZ",
+            onClick = onToggleMute,
+            accent = if (silence) OperatorColors.TextDim else OperatorColors.Phosphor,
+        )
+    }
+}
+
+/** En modo hablar solo se muestra la última respuesta del operador, grande y centrada. */
+@Composable
+private fun LastOperatorMessage(state: ConversationUiState) {
+    val last = state.turns.lastOrNull { it.author == Author.OPERATOR }
+    if (last == null) {
+        Text(
+            text = "Pulsa HABLAR y dime algo, señor.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = OperatorColors.TextDim,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        return
+    }
+    ConsolePanel(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = last.text,
+            style = MaterialTheme.typography.titleMedium,
+            color = OperatorColors.Phosphor,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        last.cards.forEach { card ->
+            Spacer(Modifier.height(8.dp))
+            ResultCardView(card)
         }
     }
 }

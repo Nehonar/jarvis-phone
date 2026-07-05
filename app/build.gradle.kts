@@ -17,8 +17,8 @@ android {
         applicationId = "com.nehonar.operator"
         minSdk = 29
         targetSdk = 36
-        versionCode = 19
-        versionName = "0.15.2"
+        versionCode = 20
+        versionName = "0.15.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
