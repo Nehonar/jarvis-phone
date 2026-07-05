@@ -46,6 +46,7 @@ import com.nehonar.operator.feature.console.ConsoleVisualization
 @Composable
 fun ConversationScreen(
     onNavigate: (OperatorDestination) -> Unit,
+    autoStartListening: Boolean = false,
     viewModel: ConversationViewModel = hiltViewModel(),
     consoleViewModel: ConsoleViewModel = hiltViewModel(),
 ) {
@@ -75,6 +76,11 @@ fun ConversationScreen(
             Manifest.permission.RECORD_AUDIO,
         ) == PackageManager.PERMISSION_GRANTED
         if (granted) viewModel.startTalking() else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    // Lanzado desde el asistente del sistema (Fase 16): empieza a escuchar solo.
+    LaunchedEffect(autoStartListening) {
+        if (autoStartListening) onTalkClick()
     }
 
     val speakMode = state.mode == ConversationMode.SPEAK

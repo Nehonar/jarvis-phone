@@ -1,5 +1,7 @@
 package com.nehonar.operator.feature.settings
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,7 @@ fun SettingsScreen(
     val scanlinesEnabled by viewModel.scanlinesEnabled.collectAsStateWithLifecycle()
     val voiceEnabled by viewModel.voiceEnabled.collectAsStateWithLifecycle()
     val aiState by viewModel.aiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     Column(
         Modifier
@@ -114,6 +118,37 @@ fun SettingsScreen(
                     ),
                 )
             }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        ConsolePanel(title = "MANOS LIBRES", modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Elige Operator como asistente del dispositivo para abrirlo con el " +
+                    "gesto de asistente (incluso bloqueado, según el móvil).",
+                style = MaterialTheme.typography.bodySmall,
+                color = OperatorColors.TextDim,
+            )
+            Spacer(Modifier.height(8.dp))
+            OperatorButton(
+                text = "ELEGIR ASISTENTE DEL SISTEMA",
+                onClick = {
+                    // Preferimos los ajustes de asistente; si el fabricante no los
+                    // expone, caemos a los ajustes generales de la app.
+                    val opened = runCatching {
+                        context.startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
+                    }.isSuccess
+                    if (!opened) {
+                        runCatching {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = android.net.Uri.fromParts("package", context.packageName, null)
+                                },
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         Spacer(Modifier.height(16.dp))

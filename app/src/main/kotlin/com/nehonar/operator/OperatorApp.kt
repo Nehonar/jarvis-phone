@@ -15,7 +15,10 @@ import com.nehonar.operator.core.design.theme.OperatorTheme
 import com.nehonar.operator.navigation.OperatorNavHost
 
 @Composable
-fun OperatorApp(viewModel: AppViewModel = hiltViewModel()) {
+fun OperatorApp(
+    startInListening: Boolean = false,
+    viewModel: AppViewModel = hiltViewModel(),
+) {
     val scanlinesEnabled by viewModel.scanlinesEnabled.collectAsStateWithLifecycle()
     OperatorTheme {
         Box(
@@ -24,9 +27,10 @@ fun OperatorApp(viewModel: AppViewModel = hiltViewModel()) {
                 .background(OperatorColors.Background),
         ) {
             OperatorNavHost(
-                Modifier
+                modifier = Modifier
                     .fillMaxSize()
                     .safeDrawingPadding(),
+                startInListening = startInListening,
             )
             if (scanlinesEnabled) {
                 ScanlinesOverlay()

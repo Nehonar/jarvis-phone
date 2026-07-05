@@ -305,7 +305,7 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 15 (paso 1) | Conversacional: motor de preguntas (`QUERY` + estado actual en el prompt) | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
 | 15 (paso 2) | Conversacional: voz hablada (TTS `Speaker`) + feedback en cada acción + silencio | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
 | 15 (paso 3) | Conversacional: pantalla de conversación (modos hablar/silencio) + menú por voz + acción directa (`IntentCommitter`) | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
-| 16 | Manos libres (asistente del sistema, Opción A) | Pendiente |
+| 16 | Manos libres (asistente del sistema, Opción A) | **Implementada** (device-verified) → [`fase-16-plan.md`](fase-16-plan.md) |
 | 11, 12, 14 | Salud, email RO, backend | — |
 
 Regla de oro: **cada fase termina con una app usable y compilable.**

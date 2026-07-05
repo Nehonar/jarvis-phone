@@ -20,7 +20,10 @@ import com.nehonar.operator.feature.review.ReviewScreen
 import com.nehonar.operator.feature.settings.SettingsScreen
 
 @Composable
-fun OperatorNavHost(modifier: Modifier = Modifier) {
+fun OperatorNavHost(
+    modifier: Modifier = Modifier,
+    startInListening: Boolean = false,
+) {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
@@ -32,6 +35,7 @@ fun OperatorNavHost(modifier: Modifier = Modifier) {
                 onNavigate = { destination ->
                     navController.navigate(destination.toRoute())
                 },
+                autoStartListening = startInListening,
             )
         }
         composable<HomeRoute> {

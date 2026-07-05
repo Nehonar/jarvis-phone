@@ -27,8 +27,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val startInListening = intent?.getBooleanExtra(EXTRA_START_LISTENING, false) == true
         setContent {
-            OperatorApp()
+            OperatorApp(startInListening = startInListening)
         }
     }
 
@@ -55,5 +56,10 @@ class MainActivity : ComponentActivity() {
         appScope.launch {
             placeRepository.getAll().forEach { geofenceScheduler.register(it) }
         }
+    }
+
+    companion object {
+        /** El asistente del sistema pone este extra para que la conversación escuche al abrir. */
+        const val EXTRA_START_LISTENING = "operator_start_listening"
     }
 }

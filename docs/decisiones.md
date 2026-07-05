@@ -352,3 +352,25 @@ Cambios:
 
 El mock detecta disparadores de borrado ("bórrala", "elimina X") de forma
 determinista; la resolución fina por contexto es del proveedor real.
+
+## D-019 · Manos libres: asistente del dispositivo (Opción A), no palabra clave propia
+
+**Fecha:** 2026-07-05 · **Origen:** usuario · **Tipo:** producto / plataforma
+
+El usuario quería invocar a Operator "como OK Google / Oye Siri", con el móvil
+bloqueado. Una **palabra clave siempre a la escucha propia** exige micrófono en
+segundo plano permanente y privilegios de sistema que Android no concede a una app
+sideloaded — no es viable. La vía realista (acordada con el usuario como "Opción
+A") es que Operator **sustituya al asistente del dispositivo**: entonces el gesto
+de asistente lo abre.
+
+Implementación (Fase 16): `VoiceInteractionService` + `VoiceInteractionSession(Service)`
+que, al invocarse, lanza la conversación con un extra para empezar a escuchar sola;
+`RecognitionService` stub exigido por el descriptor; descriptores XML con
+`supportsAssist` y `supportsLaunchVoiceAssistFromKeyguard`; botón en Ajustes que
+abre la selección de asistente del sistema.
+
+Coherente con D-011/D-009: es **solo de dispositivo**, no verificable en CI (que
+solo garantiza compilación y validez de manifest/recursos). El descriptor de
+asistente y el recognitionService varían por versión y fabricante, así que se
+asume **iteración en el dispositivo** para que aparezca y funcione bien.
