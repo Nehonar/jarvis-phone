@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
@@ -36,7 +37,10 @@ class PlayServicesGeofenceScheduler @Inject constructor(
     }
 
     override fun register(place: SavedPlace) {
-        if (!canRegisterGeofences()) return
+        if (!canRegisterGeofences()) {
+            Log.w(TAG, "Geofence NO registrado para '${place.label}': falta permiso de ubicación en segundo plano")
+            return
+        }
         val geofence = Geofence.Builder()
             .setRequestId(place.id)
             .setCircularRegion(place.latitude, place.longitude, place.radiusMeters)
@@ -49,8 +53,15 @@ class PlayServicesGeofenceScheduler @Inject constructor(
             .build()
         try {
             client.addGeofences(request, pendingIntent())
+                .addOnSuccessListener { Log.i(TAG, "Geofence registrado: '${place.label}' (${place.id})") }
+                .addOnFailureListener { e ->
+                    // Fallo típico: ubicación desactivada, demasiados geofences, o
+                    // Play Services no disponible. Antes se perdía en silencio.
+                    Log.e(TAG, "Fallo al registrar geofence '${place.label}': ${e.message}", e)
+                }
         } catch (e: SecurityException) {
             // El permiso pudo revocarse entre la comprobación y aquí: no bloquea.
+            Log.e(TAG, "SecurityException al registrar geofence '${place.label}'", e)
         }
     }
 
@@ -66,5 +77,9 @@ class PlayServicesGeofenceScheduler @Inject constructor(
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
         )
+    }
+
+    private companion object {
+        const val TAG = "GeofenceScheduler"
     }
 }

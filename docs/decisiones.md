@@ -262,3 +262,31 @@ la opción de silenciarlo y pasar a texto. Resolución (Fase 15, paso 2):
   por defecto). El `AndroidSpeaker` la observa y, si está en silencio, no habla y
   corta lo que estuviera diciendo. Toggle en Ajustes ("VOZ DEL OPERADOR"). El
   botón de silencio dentro de la conversación llega en el paso 3.
+
+## D-016 · Geofence: re-registrar al conceder permiso, no fallar en silencio
+
+**Fecha:** 2026-07-05 · **Origen:** usuario (fricción real) · **Tipo:** corrección de producto
+
+Caso real: el usuario guardó "casa", pidió un aviso al llegar ("recuérdame
+quitarme las bambas al llegar a casa"), se alejó varios km y al volver no recibió
+aviso. Causa raíz: los geofences exigen `ACCESS_BACKGROUND_LOCATION` ("Permitir
+todo el tiempo"); `register()` era un no-op silencioso sin ese permiso y **no
+había re-registro** cuando el permiso se concedía después — solo se re-registraba
+en un reinicio (`BootCompletedReceiver`). Un lugar (o su recordatorio) creado sin
+el permiso nunca llegaba a registrar su geofence.
+
+Correcciones:
+
+- **Re-registro al recuperar el permiso:** `PlacesViewModel.refreshPermissions()`
+  (llamado en cada ON_RESUME de la pantalla PLACES) re-registra los geofences de
+  todos los lugares guardados cuando el permiso está concedido. Idempotente.
+- **Red de seguridad al abrir la app:** `MainActivity.onResume` re-registra los
+  geofences de los lugares guardados si hay permiso, sin esperar a un reinicio ni
+  a que el usuario entre en PLACES.
+- **Sin fallos en silencio:** `PlayServicesGeofenceScheduler.register()` ahora
+  registra en `Log` cuando no puede registrar por falta de permiso y adjunta
+  `addOnSuccessListener`/`addOnFailureListener` a `addGeofences` (antes un fallo
+  de Play Services —ubicación desactivada, demasiados geofences— se perdía).
+
+Sigue siendo cierto (D-011): el geofence en sí es solo de dispositivo y no se
+prueba en CI; la lógica de re-registro sí se cubre con `FakeGeofenceScheduler`.

@@ -85,6 +85,34 @@ class PlacesViewModelTest {
     }
 
     @Test
+    fun `al refrescar con permiso concedido re-registra los geofences de los lugares`() = runTest {
+        // Lugares guardados antes (p. ej. sin permiso de segundo plano, geofence perdido).
+        placeRepository.save(SavedPlace("p1", "Casa", 40.0, -3.0, 150f, Instant.ofEpochMilli(1_000)))
+        placeRepository.save(SavedPlace("p2", "Trabajo", 41.0, -3.5, 150f, Instant.ofEpochMilli(1_000)))
+        geofenceScheduler.backgroundGranted = true
+        val vm = viewModel()
+        collectState(vm)
+
+        vm.refreshPermissions()
+
+        assertEquals(true, vm.uiState.value.backgroundLocationGranted)
+        assertEquals(setOf("p1", "p2"), geofenceScheduler.registered.map { it.id }.toSet())
+    }
+
+    @Test
+    fun `al refrescar sin permiso no re-registra nada`() = runTest {
+        placeRepository.save(SavedPlace("p1", "Casa", 40.0, -3.0, 150f, Instant.ofEpochMilli(1_000)))
+        geofenceScheduler.backgroundGranted = false
+        val vm = viewModel()
+        collectState(vm)
+
+        vm.refreshPermissions()
+
+        assertEquals(false, vm.uiState.value.backgroundLocationGranted)
+        assertTrue(geofenceScheduler.registered.isEmpty())
+    }
+
+    @Test
     fun `borrar un lugar retira el geofence y limpia sus recordatorios`() = runTest {
         placeRepository.save(
             SavedPlace("p1", "Casa", 40.0, -3.0, 150f, Instant.ofEpochMilli(1_000)),

@@ -58,9 +58,17 @@ class PlacesViewModel @Inject constructor(
         )
 
     fun refreshPermissions() {
-        transient.value = transient.value.copy(
-            backgroundLocationGranted = geofenceScheduler.canRegisterGeofences(),
-        )
+        val granted = geofenceScheduler.canRegisterGeofences()
+        transient.value = transient.value.copy(backgroundLocationGranted = granted)
+        // Un lugar (o su recordatorio) guardado SIN permiso de segundo plano nunca
+        // llegó a registrar su geofence, y conceder el permiso después no lo hace
+        // por sí solo. Al volver con el permiso concedido, re-registramos todos los
+        // lugares para que el aviso al llegar funcione sin esperar a un reinicio.
+        if (granted) {
+            viewModelScope.launch {
+                placeRepository.getAll().forEach { geofenceScheduler.register(it) }
+            }
+        }
     }
 
     /** Captura la posición actual y la guarda como lugar con la etiqueta dada. */
