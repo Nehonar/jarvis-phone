@@ -290,3 +290,29 @@ Correcciones:
 
 Sigue siendo cierto (D-011): el geofence en sí es solo de dispositivo y no se
 prueba en CI; la lógica de re-registro sí se cubre con `FakeGeofenceScheduler`.
+
+## D-017 · Consola: nube de partículas (nebulosa) en vez de nodos orbitando
+
+**Fecha:** 2026-07-05 · **Origen:** usuario (referencia visual) · **Tipo:** producto / estética
+
+El usuario mostró una referencia (dashboard "V.A.U.L.T.") con el efecto que
+buscaba: una **nube de partículas** —cientos de puntos formando una esfera/
+nebulosa que gira y brilla desde el centro, con líneas finas entre puntos
+cercanos—, en contraste con las "bolitas orbitando" en anillos de la Fase 8.
+
+`ConsoleVisualization` se reescribe como una nube 3D:
+
+- ~230 puntos distribuidos en una esfera (densidad de volumen), rotando despacio
+  en Y con un ligero cabeceo en X, proyectados con perspectiva simple (los
+  cercanos, más grandes y brillantes).
+- Aristas al vecino más cercano (precalculadas una vez, sin O(n²) por frame):
+  aspecto de red/nebulosa sin coste por fotograma.
+- Cada dato real (recordatorio/acción/nota) **ilumina** un punto con su color
+  (naranja/cian/fósforo) y un pulso — se mantiene el significado "los datos dan
+  vida a la escena" de la Fase 8, cambiando solo la forma.
+- `activityLevel` modula brillo, velocidad de giro y cadencia del pulso; se
+  conservan el destello al tocar y el halo central.
+
+Se mantiene la identidad cromática del operador (fósforo/cian), no el morado de
+la referencia: lo que pedía el usuario era la **forma** (partículas), no la
+paleta. El contrato (`ConsoleUiState`, `NodeKind`) no cambia.

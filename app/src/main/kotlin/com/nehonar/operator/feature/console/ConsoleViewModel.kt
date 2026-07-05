@@ -29,7 +29,7 @@ data class ConsoleUiState(
     val pendingReminders: Int = 0,
     val openActions: Int = 0,
     val notesToday: Int = 0,
-    /** 0..1: modula la cadencia del pulso y la velocidad orbital. */
+    /** 0..1: modula el brillo de la nube, su velocidad de giro y la cadencia del pulso. */
     val activityLevel: Float = 0f,
 ) {
     val isActive: Boolean get() = nodes.isNotEmpty()
