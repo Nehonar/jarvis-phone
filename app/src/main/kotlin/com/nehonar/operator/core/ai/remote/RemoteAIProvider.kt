@@ -2,6 +2,7 @@ package com.nehonar.operator.core.ai.remote
 
 import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
+import com.nehonar.operator.core.ai.PriorMessage
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.common.formatOperatorTime
@@ -37,7 +38,10 @@ class RemoteAIProvider(
     private val checklistRepository: ChecklistRepository,
 ) : AIProvider {
 
-    override suspend fun parseVoiceNote(transcript: String): AIParseResult = withContext(Dispatchers.IO) {
+    override suspend fun parseVoiceNote(
+        transcript: String,
+        history: List<PriorMessage>,
+    ): AIParseResult = withContext(Dispatchers.IO) {
         if (config.apiKey.isBlank()) {
             return@withContext AIParseResult.Failure("Falta configurar la clave de ${config.displayName}")
         }
@@ -61,13 +65,19 @@ class RemoteAIProvider(
             ChatCompletionRequest.serializer(),
             ChatCompletionRequest(
                 model = config.model,
-                messages = listOf(
-                    ChatMessage(
-                        role = "system",
-                        content = PromptBuilder.systemPrompt(today, agenda, memoryFacts, places, currentState),
-                    ),
-                    ChatMessage(role = "user", content = PromptBuilder.buildUserMessage(transcript)),
-                ),
+                messages = buildList {
+                    add(
+                        ChatMessage(
+                            role = "system",
+                            content = PromptBuilder.systemPrompt(today, agenda, memoryFacts, places, currentState),
+                        ),
+                    )
+                    // Turnos previos como contexto (resolver "bórrala", "ese"…).
+                    history.forEach { prior ->
+                        add(ChatMessage(role = if (prior.fromUser) "user" else "assistant", content = prior.text))
+                    }
+                    add(ChatMessage(role = "user", content = PromptBuilder.buildUserMessage(transcript)))
+                },
             ),
         )
 

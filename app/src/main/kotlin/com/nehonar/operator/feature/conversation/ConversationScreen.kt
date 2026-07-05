@@ -224,6 +224,8 @@ private fun StatusBar(status: ConversationStatus) {
             StatusLine("OPERATOR", "INTERPRETANDO", valueColor = OperatorColors.Cyan)
         is ConversationStatus.AwaitingAnswer ->
             StatusLine("OPERATOR", "ESPERANDO DATO", valueColor = OperatorColors.Warning)
+        is ConversationStatus.AwaitingConfirmation ->
+            StatusLine("OPERATOR", "CONFIRMA SÍ / NO", valueColor = OperatorColors.Warning)
         is ConversationStatus.Error -> {
             StatusLine("OPERATOR", "ERROR", valueColor = OperatorColors.Danger)
             Spacer(Modifier.height(4.dp))

@@ -21,6 +21,8 @@ data class IntentJson(
     val memory_facts: List<MemoryFactJson> = emptyList(),
     /** Consulta concisa para buscar cerca en un mapa. */
     val map_query: String? = null,
+    /** Texto que identifica qué borrar cuando intent_type es DELETE. */
+    val delete_query: String? = null,
 )
 
 @Serializable

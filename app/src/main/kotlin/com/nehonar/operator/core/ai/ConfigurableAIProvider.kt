@@ -32,10 +32,10 @@ class ConfigurableAIProvider @Inject constructor(
     private val checklistRepository: ChecklistRepository,
 ) : AIProvider {
 
-    override suspend fun parseVoiceNote(transcript: String): AIParseResult {
+    override suspend fun parseVoiceNote(transcript: String, history: List<PriorMessage>): AIParseResult {
         val providerType = preferences.aiProviderType.first()
         if (providerType == AIProviderType.MOCK) {
-            return mockAIProvider.parseVoiceNote(transcript)
+            return mockAIProvider.parseVoiceNote(transcript, history)
         }
 
         val baseUrl = providerType.defaultBaseUrl
@@ -55,6 +55,6 @@ class ConfigurableAIProvider @Inject constructor(
         return RemoteAIProvider(
             config, httpClient, timeProvider, calendarRepository, memoryRepository, placeRepository,
             reminderRepository, checklistRepository,
-        ).parseVoiceNote(transcript)
+        ).parseVoiceNote(transcript, history)
     }
 }

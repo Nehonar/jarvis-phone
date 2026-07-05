@@ -68,6 +68,7 @@ object IntentJsonParser {
             .filter { it.fact.isNotBlank() }
             .map { MemoryFactDraft(topic = it.topic.ifBlank { "nota" }, fact = it.fact) },
         mapQuery = map_query?.trim()?.takeIf { it.isNotEmpty() },
+        deleteQuery = delete_query?.trim()?.takeIf { it.isNotEmpty() },
     )
 
     /** La IA a veces no respeta el formato exacto: se descarta en vez de romper la app. */

@@ -13,7 +13,7 @@ class MockAIProvider @Inject constructor(
     private val timeProvider: TimeProvider,
 ) : AIProvider {
 
-    override suspend fun parseVoiceNote(transcript: String): AIParseResult {
+    override suspend fun parseVoiceNote(transcript: String, history: List<PriorMessage>): AIParseResult {
         val text = transcript.trim()
         val lower = text.lowercase()
 
@@ -28,6 +28,26 @@ class MockAIProvider @Inject constructor(
                     summary = text,
                     assistantResponse = "Para responder eso necesito el proveedor de IA real, señor.",
                     needsConfirmation = false,
+                ),
+            )
+        }
+
+        // Orden de borrar: la app buscará el elemento y pedirá confirmación.
+        if (matchesAny(lower, DELETE_TRIGGERS)) {
+            val query = extractDeleteQuery(lower, text)
+            return AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.DELETE,
+                    confidence = 0.6f,
+                    title = "DELETE",
+                    summary = text,
+                    deleteQuery = query,
+                    assistantResponse = if (query != null) {
+                        "Voy a buscar «$query» para borrarlo, señor."
+                    } else {
+                        "¿Qué quiere que borre, señor?"
+                    },
+                    needsConfirmation = true,
                 ),
             )
         }
@@ -132,6 +152,15 @@ class MockAIProvider @Inject constructor(
         if (matchesAny(lower, REMINDER_TRIGGERS) || matchesAny(lower, MEMORY_TRIGGERS)) return false
         if (original.trimEnd().endsWith("?")) return true
         return QUESTION_STARTERS.any { lower.startsWith(it) }
+    }
+
+    /** Texto tras el disparador de borrado ("elimina el X" ⇒ "el X"). Null si va sola ("bórrala"). */
+    private fun extractDeleteQuery(lower: String, original: String): String? {
+        val matchEnd = DELETE_TRIGGERS.firstNotNullOfOrNull { wordBoundaryRegex(it).find(lower)?.range?.last }
+            ?: return null
+        return original.substring((matchEnd + 1).coerceAtMost(original.length))
+            .trim().trim('.', '!', '?', ',')
+            .takeIf { it.isNotEmpty() }
     }
 
     /** "apunta que X" / "recuerda que X" ⇒ hecho memorable con el texto tal cual. */
@@ -246,6 +275,7 @@ class MockAIProvider @Inject constructor(
             IntentType.DAILY_CONSTRAINT -> "Restricción registrada, señor."
             IntentType.NEARBY_SEARCH -> "Búsqueda preparada, señor. Le abriré el mapa cuando lo desee."
             IntentType.QUERY -> "Para responder eso necesito el proveedor de IA real, señor."
+            IntentType.DELETE -> "¿Qué quiere que borre, señor?"
             IntentType.GENERAL_NOTE -> "Nota guardada, señor."
             IntentType.UNKNOWN -> "No he identificado ninguna acción clara, señor. Quizás con más detalle."
         }
@@ -258,6 +288,10 @@ class MockAIProvider @Inject constructor(
         val CARRY_TRIGGERS = listOf("llevar")
         val CALL_TRIGGERS = listOf("llamar a", "avisar a")
         val REMINDER_TRIGGERS = listOf("recuérdame", "recuerdame", "avísame", "avisame", "acuérdame", "acuerdame")
+        val DELETE_TRIGGERS = listOf(
+            "bórrala", "borrala", "bórralo", "borralo", "bórrame", "borrame", "borra",
+            "elimina", "elimínalo", "eliminalo", "quítalo", "quitalo", "quita",
+        )
         val MEMORY_TRIGGERS = listOf("apunta que", "recuerda que")
         val SEARCH_TRIGGERS = listOf("búscame", "buscame", "busca", "encuéntrame", "encuentrame")
         val QUESTION_STARTERS = listOf(

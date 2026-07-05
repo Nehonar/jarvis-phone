@@ -98,6 +98,16 @@ class PromptBuilderTest {
     }
 
     @Test
+    fun `incluye el tipo DELETE, su campo y su regla`() {
+        val prompt = PromptBuilder.systemPrompt(today)
+
+        assertTrue(prompt.contains("DELETE"))
+        assertTrue(prompt.contains("delete_query"))
+        assertTrue(prompt.contains("Borrar"))
+        assertTrue(prompt.contains("Contexto de conversación"))
+    }
+
+    @Test
     fun `sin estado actual no incluye el bloque de estado`() {
         val prompt = PromptBuilder.systemPrompt(today)
 

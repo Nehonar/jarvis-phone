@@ -8,6 +8,8 @@ import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
 import com.nehonar.operator.core.ai.Priority
 import com.nehonar.operator.core.domain.IntentCommitter
+import com.nehonar.operator.core.domain.model.Reminder
+import com.nehonar.operator.core.domain.model.ReminderStatus
 import com.nehonar.operator.testing.FakeAIProvider
 import com.nehonar.operator.testing.FakeChecklistRepository
 import com.nehonar.operator.testing.FakeGeofenceScheduler
@@ -74,6 +76,10 @@ class ConversationViewModelTest {
         intentCommitter = intentCommitter,
         timeProvider = timeProvider,
         voiceMode = voiceMode,
+        reminderRepository = reminderRepository,
+        reminderScheduler = reminderScheduler,
+        checklistRepository = checklistRepository,
+        widgetRefresher = widgetRefresher,
     )
 
     @Test
@@ -194,5 +200,113 @@ class ConversationViewModelTest {
 
         assertEquals(ConversationMode.SILENCE, vm.uiState.value.mode)
         assertTrue(speaker.stopCount >= 1)
+    }
+
+    @Test
+    fun `borrar por comando pide confirmacion y al decir si borra el recordatorio`() = runTest {
+        reminderRepository.save(
+            Reminder("r1", "n0", "Ir al médico", timeProvider.now(), ReminderStatus.PENDING),
+        )
+        val aiProvider = FakeAIProvider {
+            AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.DELETE,
+                    confidence = 0.7f,
+                    title = "DELETE",
+                    summary = it,
+                    deleteQuery = "ir al médico",
+                    assistantResponse = "Voy a buscarlo, señor.",
+                ),
+            )
+        }
+        val vm = viewModel(aiProvider)
+
+        vm.sendText("bórrala")
+
+        // No borra aún: pide confirmación con el elemento encontrado.
+        assertTrue(vm.uiState.value.status is ConversationStatus.AwaitingConfirmation)
+        assertTrue(vm.uiState.value.turns.last().text.contains("Ir al médico"))
+        assertEquals(1, reminderRepository.current.size)
+
+        vm.sendText("sí")
+
+        assertTrue(vm.uiState.value.status is ConversationStatus.Idle)
+        assertTrue(reminderRepository.current.isEmpty())
+        assertTrue(reminderScheduler.cancelled.contains("r1"))
+        assertTrue(vm.uiState.value.turns.last().text.contains("borrado"))
+    }
+
+    @Test
+    fun `borrar por comando y decir no no borra nada`() = runTest {
+        reminderRepository.save(
+            Reminder("r1", "n0", "Ir al médico", timeProvider.now(), ReminderStatus.PENDING),
+        )
+        val aiProvider = FakeAIProvider {
+            AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.DELETE,
+                    confidence = 0.7f,
+                    title = "DELETE",
+                    summary = it,
+                    deleteQuery = "médico",
+                    assistantResponse = "Voy a buscarlo, señor.",
+                ),
+            )
+        }
+        val vm = viewModel(aiProvider)
+
+        vm.sendText("elimina lo del médico")
+        assertTrue(vm.uiState.value.status is ConversationStatus.AwaitingConfirmation)
+
+        vm.sendText("no, déjalo")
+
+        assertTrue(vm.uiState.value.status is ConversationStatus.Idle)
+        assertEquals(1, reminderRepository.current.size)
+        assertTrue(reminderScheduler.cancelled.isEmpty())
+    }
+
+    @Test
+    fun `borrar sin encontrar candidato pide que se aclare`() = runTest {
+        val aiProvider = FakeAIProvider {
+            AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.DELETE,
+                    confidence = 0.7f,
+                    title = "DELETE",
+                    summary = it,
+                    deleteQuery = "algo que no existe",
+                    assistantResponse = "Voy a buscarlo, señor.",
+                ),
+            )
+        }
+        val vm = viewModel(aiProvider)
+
+        vm.sendText("bórralo")
+
+        assertTrue(vm.uiState.value.status is ConversationStatus.Idle)
+        assertTrue(vm.uiState.value.turns.last().text.contains("No encuentro"))
+    }
+
+    @Test
+    fun `pasa el historial reciente a la IA`() = runTest {
+        val aiProvider = FakeAIProvider {
+            AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.QUERY,
+                    confidence = 0.7f,
+                    title = "QUERY",
+                    summary = it,
+                    assistantResponse = "Respuesta del operador.",
+                ),
+            )
+        }
+        val vm = viewModel(aiProvider)
+
+        vm.sendText("primera cosa")
+        vm.sendText("segunda cosa")
+
+        // El segundo mensaje debe llevar como contexto los turnos previos.
+        assertTrue(aiProvider.lastHistory.any { it.text == "primera cosa" && it.fromUser })
+        assertTrue(aiProvider.lastHistory.any { it.text == "Respuesta del operador." && !it.fromUser })
     }
 }

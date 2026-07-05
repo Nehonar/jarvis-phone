@@ -5,6 +5,7 @@ import com.nehonar.operator.core.ai.AIProvider
 import com.nehonar.operator.core.ai.AIProviderType
 import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.ai.PriorMessage
 import com.nehonar.operator.core.calendar.CalendarEvent
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
@@ -134,9 +135,12 @@ class FakeAIProvider(
 ) : AIProvider {
     var lastTranscript: String? = null
         private set
+    var lastHistory: List<PriorMessage> = emptyList()
+        private set
 
-    override suspend fun parseVoiceNote(transcript: String): AIParseResult {
+    override suspend fun parseVoiceNote(transcript: String, history: List<PriorMessage>): AIParseResult {
         lastTranscript = transcript
+        lastHistory = history
         return result(transcript)
     }
 }

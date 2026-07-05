@@ -183,6 +183,20 @@ class IntentJsonParserTest {
     }
 
     @Test
+    fun `intent_type DELETE con delete_query se mapea`() {
+        val json = """
+            {"intent_type": "DELETE", "assistant_response": "Voy a buscarlo, señor.",
+             "delete_query": "  recordatorio del médico  "}
+        """.trimIndent()
+
+        val intent = IntentJsonParser.parse(json)
+
+        requireNotNull(intent)
+        assertEquals(IntentType.DELETE, intent.intentType)
+        assertEquals("recordatorio del médico", intent.deleteQuery)
+    }
+
+    @Test
     fun `map_query se parsea para NEARBY_SEARCH`() {
         val json = """
             {"intent_type": "NEARBY_SEARCH", "assistant_response": "ok",

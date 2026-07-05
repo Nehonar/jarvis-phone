@@ -11,7 +11,7 @@ class MockAIProviderTest {
 
     // 2026-07-02T10:15:00Z -> today() = 2026-07-02 (jueves), mañana = 2026-07-03.
     private val timeProvider = FixedTimeProvider()
-    private val provider = MockAIProvider(timeProvider)
+    private val provider: AIProvider = MockAIProvider(timeProvider)
 
     private suspend fun parse(transcript: String): ParsedIntent =
         when (val result = provider.parseVoiceNote(transcript)) {
@@ -226,6 +226,22 @@ class MockAIProviderTest {
         val result = parse("recuérdame llamar al médico a las 9 de la mañana")
 
         assertEquals(IntentType.REMINDER, result.intentType)
+    }
+
+    @Test
+    fun `borrala se clasifica como DELETE sin extraer objetivo`() = runTest {
+        val result = parse("bórrala")
+
+        assertEquals(IntentType.DELETE, result.intentType)
+        assertNull(result.deleteQuery)
+    }
+
+    @Test
+    fun `elimina X se clasifica como DELETE con el objetivo`() = runTest {
+        val result = parse("elimina el recordatorio del médico")
+
+        assertEquals(IntentType.DELETE, result.intentType)
+        assertEquals("el recordatorio del médico", result.deleteQuery)
     }
 
     @Test

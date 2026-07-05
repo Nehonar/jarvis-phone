@@ -325,3 +325,30 @@ cuando el operador habla. `Speaker` expone `isSpeaking: StateFlow` (marcado por 
 ligera expansión/vibración mientras habla. La nube aparece también como presencia
 del operador en la cabecera de la conversación, para verla reaccionar al hablar.
 En silencio (voz desactivada) no hay locución y la nube queda en reposo.
+
+## D-018 · Conversación: contexto reciente + borrar por comando con confirmación
+
+**Fecha:** 2026-07-05 · **Origen:** usuario (fricción real) · **Tipo:** producto
+
+Fricción: cada frase perdía el contexto. "¿Tengo algo para hoy?" → el operador
+respondía, y "bórrala, ya la hice" fallaba con "¿qué quiere que borre?". Además,
+en modo hablar sobraba el chat: solo interesa el último mensaje.
+
+Cambios:
+
+- **Contexto:** `AIProvider.parseVoiceNote(transcript, history)` recibe los
+  últimos turnos (usuario/operador). `RemoteAIProvider` los envía como mensajes
+  previos del chat; así la IA resuelve "bórrala", "ese", "el de antes". Los flujos
+  de una sola nota (captura/revisión) pasan historial vacío (valor por defecto).
+- **Borrar por comando:** nuevo `IntentType.DELETE` + campo `delete_query`. Ante
+  un DELETE, `ConversationViewModel` busca el elemento (por el texto de la IA o,
+  si no, por la última respuesta del operador) entre recordatorios pendientes y
+  checklist abierta, y **pide confirmación** ("¿Borro «X», señor?"). Solo borra
+  con un sí explícito (cancela la alarma del recordatorio); con "no" o respuesta
+  ambigua no borra nada. Nunca borra sin confirmar.
+- **UI modo hablar:** la nube ocupa toda la pantalla y encima solo se ve el
+  último mensaje del operador; el chat con historial y la caja de texto quedan
+  para el modo silencio.
+
+El mock detecta disparadores de borrado ("bórrala", "elimina X") de forma
+determinista; la resolución fina por contexto es del proveedor real.

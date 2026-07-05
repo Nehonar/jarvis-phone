@@ -14,6 +14,7 @@ enum class IntentType {
     DAILY_CONSTRAINT,
     NEARBY_SEARCH,
     QUERY,
+    DELETE,
     GENERAL_NOTE,
     UNKNOWN,
 }
@@ -94,4 +95,6 @@ data class ParsedIntent(
     val memoryFacts: List<MemoryFactDraft> = emptyList(),
     /** Consulta concisa para buscar cerca en un mapa (p. ej. "restaurante vegano"). Null si no aplica. */
     val mapQuery: String? = null,
+    /** Texto que identifica QUÉ borrar cuando intentType == DELETE (p. ej. el mensaje del recordatorio). Null si no aplica. */
+    val deleteQuery: String? = null,
 )

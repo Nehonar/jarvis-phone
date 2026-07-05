@@ -70,7 +70,7 @@ object PromptBuilder {
         JSON válido, sin texto adicional, sin markdown, con exactamente estos campos:
 
         {
-          "intent_type": "REMINDER|PREPARE_EVENT|CARRY_ITEMS|SHOPPING|CALL_OR_MESSAGE|MOOD_OR_ENERGY|IDEA_CAPTURE|DAILY_CONSTRAINT|NEARBY_SEARCH|QUERY|GENERAL_NOTE|UNKNOWN",
+          "intent_type": "REMINDER|PREPARE_EVENT|CARRY_ITEMS|SHOPPING|CALL_OR_MESSAGE|MOOD_OR_ENERGY|IDEA_CAPTURE|DAILY_CONSTRAINT|NEARBY_SEARCH|QUERY|DELETE|GENERAL_NOTE|UNKNOWN",
           "confidence": 0.0 a 1.0,
           "title": "string corto",
           "summary": "string, resumen breve",
@@ -82,8 +82,13 @@ object PromptBuilder {
           "date": "YYYY-MM-DD o null",
           "time": "HH:mm en formato 24h, o null",
           "memory_facts": [{"topic": "string corto", "fact": "string autocontenido"}],
-          "map_query": "consulta corta para buscar cerca en un mapa, o null"
+          "map_query": "consulta corta para buscar cerca en un mapa, o null",
+          "delete_query": "texto que identifica qué borrar si intent_type es DELETE, o null"
         }
+
+        Contexto de conversación: si antes de este mensaje aparecen turnos previos
+        (tuyos y del usuario), ÚSALOS para resolver referencias sin contexto
+        ("bórrala", "ese", "el de antes"): mira de qué se hablaba justo antes.
 
         Fecha actual: $today ($dayName). Úsala para resolver expresiones relativas
         ("hoy", "mañana", "el viernes") a una fecha ISO concreta en "date". Nunca dejes
@@ -115,6 +120,15 @@ $agendaBlock$memoryBlock$placesBlock$stateBlock
         arriba, en una o dos frases, estilo mayordomo. En una QUERY no generas
         actions, reminders, memory_facts ni map_query: solo respondes. Si no tienes
         el dato, dilo con franqueza ("No consta nada, señor").
+
+        Borrar ("DELETE"): si el usuario pide eliminar algo ("bórrala", "elimina el
+        recordatorio del médico", "quítalo", "ya la hice, bórrala"), usa intent_type
+        "DELETE" y pon en "delete_query" el texto que identifica QUÉ borrar, tomado
+        del estado actual o de la conversación reciente (p. ej. el mensaje exacto del
+        recordatorio o la etiqueta de la tarea). No lo borras tú: la app buscará el
+        elemento y pedirá confirmación al usuario. En un DELETE no generes actions ni
+        reminders. Si de verdad no puedes saber a qué se refiere ni por el estado ni
+        por la conversación, deja "delete_query" en null y pregúntalo.
 
         Hechos memorables ("memory_facts"): si la nota contiene un dato personal
         ESTABLE que merezca recordarse (tallas, gustos, alergias, códigos, nombres

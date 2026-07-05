@@ -4,18 +4,24 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nehonar.operator.core.ai.AIParseResult
 import com.nehonar.operator.core.ai.AIProvider
+import com.nehonar.operator.core.ai.IntentType
 import com.nehonar.operator.core.ai.ParsedIntent
+import com.nehonar.operator.core.ai.PriorMessage
 import com.nehonar.operator.core.ai.ReminderTrigger
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.datastore.VoiceModePreference
 import com.nehonar.operator.core.domain.IntentCommitter
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
+import com.nehonar.operator.core.domain.repository.ChecklistRepository
+import com.nehonar.operator.core.domain.repository.ReminderRepository
 import com.nehonar.operator.core.domain.repository.VoiceNoteRepository
+import com.nehonar.operator.core.notifications.ReminderScheduler
 import com.nehonar.operator.core.voice.Speaker
 import com.nehonar.operator.core.voice.SpeechToText
 import com.nehonar.operator.core.voice.SttError
 import com.nehonar.operator.core.voice.SttEvent
+import com.nehonar.operator.core.widget.WidgetRefresher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
@@ -25,6 +31,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
@@ -53,6 +60,7 @@ sealed interface ConversationStatus {
     data class Listening(val partial: String = "", val level: Float = 0f) : ConversationStatus
     data object Processing : ConversationStatus
     data class AwaitingAnswer(val prompt: String) : ConversationStatus
+    data class AwaitingConfirmation(val prompt: String) : ConversationStatus
     data class Error(val message: String) : ConversationStatus
 }
 
@@ -77,6 +85,10 @@ class ConversationViewModel @Inject constructor(
     private val intentCommitter: IntentCommitter,
     private val timeProvider: TimeProvider,
     private val voiceMode: VoiceModePreference,
+    private val reminderRepository: ReminderRepository,
+    private val reminderScheduler: ReminderScheduler,
+    private val checklistRepository: ChecklistRepository,
+    private val widgetRefresher: WidgetRefresher,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConversationUiState())
@@ -89,6 +101,7 @@ class ConversationViewModel @Inject constructor(
     private var noteId: String? = null
     private var pendingTranscript: String? = null
     private var roundsLeft: Int = MAX_CLARIFICATION_ROUNDS
+    private var pendingDelete: DeletableItem? = null
 
     init {
         viewModelScope.launch {
@@ -171,6 +184,21 @@ class ConversationViewModel @Inject constructor(
     private suspend fun handleUtterance(text: String) {
         addTurn(Author.USER, text)
 
+        // Si hay un borrado pendiente, este turno es la respuesta sí/no.
+        val pending = pendingDelete
+        if (pending != null) {
+            pendingDelete = null
+            when {
+                isAffirmative(text) -> confirmDelete(pending)
+                isNegative(text) -> cancelDelete()
+                else -> handleCommand(text) // respuesta ambigua: no borro, lo trato como orden
+            }
+            return
+        }
+        handleCommand(text)
+    }
+
+    private suspend fun handleCommand(text: String) {
         // Solo se interpreta como navegación si no estamos en mitad de una
         // aclaración (donde el texto es la respuesta a completar la nota).
         if (pendingTranscript == null) {
@@ -201,21 +229,26 @@ class ConversationViewModel @Inject constructor(
         )
         voiceNoteRepository.save(note)
 
-        when (val result = aiProvider.parseVoiceNote(transcript)) {
+        when (val result = aiProvider.parseVoiceNote(transcript, recentHistory())) {
             is AIParseResult.Success -> {
                 val intent = result.intent
-                speaker.speak(intent.assistantResponse)
-                if (intent.clarifyingQuestions.isNotEmpty() && roundsLeft > 0) {
-                    pendingTranscript = transcript
-                    roundsLeft -= 1
-                    addTurn(Author.OPERATOR, intent.assistantResponse)
-                    setStatus(ConversationStatus.AwaitingAnswer(intent.assistantResponse))
-                } else {
-                    intentCommitter.commit(currentNoteId, intent)
-                    voiceNoteRepository.save(note.copy(status = VoiceNoteStatus.PARSED))
-                    addTurn(Author.OPERATOR, intent.assistantResponse, cards = buildCards(intent))
-                    resetConversation()
-                    setStatus(ConversationStatus.Idle)
+                when {
+                    intent.intentType == IntentType.DELETE -> handleDeleteIntent(intent)
+                    intent.clarifyingQuestions.isNotEmpty() && roundsLeft > 0 -> {
+                        speaker.speak(intent.assistantResponse)
+                        pendingTranscript = transcript
+                        roundsLeft -= 1
+                        addTurn(Author.OPERATOR, intent.assistantResponse)
+                        setStatus(ConversationStatus.AwaitingAnswer(intent.assistantResponse))
+                    }
+                    else -> {
+                        speaker.speak(intent.assistantResponse)
+                        intentCommitter.commit(currentNoteId, intent)
+                        voiceNoteRepository.save(note.copy(status = VoiceNoteStatus.PARSED))
+                        addTurn(Author.OPERATOR, intent.assistantResponse, cards = buildCards(intent))
+                        resetConversation()
+                        setStatus(ConversationStatus.Idle)
+                    }
                 }
             }
             is AIParseResult.Failure -> {
@@ -227,6 +260,77 @@ class ConversationViewModel @Inject constructor(
             }
         }
     }
+
+    /** Turnos previos (sin el actual) como contexto para la IA: resolver "bórrala"… */
+    private fun recentHistory(): List<PriorMessage> =
+        _uiState.value.turns
+            .dropLast(1)
+            .takeLast(HISTORY_TURNS)
+            .map { PriorMessage(fromUser = it.author == Author.USER, text = it.text) }
+
+    /**
+     * Petición de borrado: busca el elemento (por el texto que dio la IA o, si no,
+     * por la última respuesta del operador) y pide confirmación antes de borrar.
+     */
+    private suspend fun handleDeleteIntent(intent: ParsedIntent) {
+        val query = intent.deleteQuery?.takeIf { it.isNotBlank() } ?: lastOperatorText()
+        val candidate = findDeleteCandidate(query)
+        if (candidate == null) {
+            val reply = "No encuentro nada que borrar con eso, señor. ¿Qué elimino?"
+            speaker.speak(reply)
+            addTurn(Author.OPERATOR, reply)
+            resetConversation()
+            setStatus(ConversationStatus.Idle)
+            return
+        }
+        pendingDelete = candidate
+        val reply = "¿Borro «${candidate.label}», señor?"
+        speaker.speak(reply)
+        addTurn(Author.OPERATOR, reply)
+        resetConversation()
+        setStatus(ConversationStatus.AwaitingConfirmation(reply))
+    }
+
+    private suspend fun confirmDelete(item: DeletableItem) {
+        when (item) {
+            is DeletableItem.ReminderItem -> {
+                reminderScheduler.cancel(item.id)
+                reminderRepository.delete(item.id)
+            }
+            is DeletableItem.ChecklistEntry -> checklistRepository.delete(item.id)
+        }
+        widgetRefresher.refresh()
+        val reply = "Hecho, señor. He borrado «${item.label}»."
+        speaker.speak(reply)
+        addTurn(Author.OPERATOR, reply)
+        setStatus(ConversationStatus.Idle)
+    }
+
+    private fun cancelDelete() {
+        val reply = "Como quiera, señor. No he borrado nada."
+        speaker.speak(reply)
+        addTurn(Author.OPERATOR, reply)
+        setStatus(ConversationStatus.Idle)
+    }
+
+    /** Mejor coincidencia entre recordatorios pendientes y checklist abierta. */
+    private suspend fun findDeleteCandidate(query: String?): DeletableItem? {
+        if (query.isNullOrBlank()) return null
+        val items = buildList {
+            reminderRepository.getAllPending().forEach { add(DeletableItem.ReminderItem(it.id, it.message)) }
+            checklistRepository.observeAll().first().filter { !it.done }
+                .forEach { add(DeletableItem.ChecklistEntry(it.id, it.label)) }
+        }
+        val q = normalize(query)
+        return items
+            .map { it to matchScore(q, normalize(it.label)) }
+            .filter { it.second > 0f }
+            .maxByOrNull { it.second }
+            ?.first
+    }
+
+    private fun lastOperatorText(): String? =
+        _uiState.value.turns.lastOrNull { it.author == Author.OPERATOR }?.text
 
     private fun buildCards(intent: ParsedIntent): List<ResultCard> = buildList {
         intent.reminders.forEach { reminder ->
@@ -261,6 +365,38 @@ class ConversationViewModel @Inject constructor(
         roundsLeft = MAX_CLARIFICATION_ROUNDS
     }
 
+    private fun isAffirmative(text: String): Boolean = matchesWord(text, AFFIRMATIVE)
+
+    private fun isNegative(text: String): Boolean = matchesWord(text, NEGATIVE)
+
+    private fun matchesWord(text: String, words: List<String>): Boolean {
+        val padded = " ${normalize(text)} "
+        return words.any { padded.contains(" $it ") }
+    }
+
+    private fun normalize(text: String): String =
+        text.lowercase()
+            .replace(Regex("[^\\p{L}\\p{N}\\s]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
+    /** 1.0 si una contiene a la otra; si no, solapamiento de palabras (0..1). */
+    private fun matchScore(query: String, label: String): Float {
+        if (query.isEmpty() || label.isEmpty()) return 0f
+        if (label.contains(query) || query.contains(label)) return 1f
+        val qWords = query.split(" ").filter { it.length > 2 }.toSet()
+        val lWords = label.split(" ").filter { it.length > 2 }.toSet()
+        if (qWords.isEmpty() || lWords.isEmpty()) return 0f
+        val common = qWords.count { it in lWords }
+        return common.toFloat() / minOf(qWords.size, lWords.size)
+    }
+
+    private sealed interface DeletableItem {
+        val label: String
+        data class ReminderItem(val id: String, override val label: String) : DeletableItem
+        data class ChecklistEntry(val id: String, override val label: String) : DeletableItem
+    }
+
     private fun SttError.toMessage(): String = when (this) {
         SttError.NO_MATCH -> "SIN COINCIDENCIA // REPITE"
         SttError.NO_SPEECH -> "SIN VOZ DETECTADA // REINTENTAR"
@@ -273,5 +409,11 @@ class ConversationViewModel @Inject constructor(
 
     private companion object {
         const val MAX_CLARIFICATION_ROUNDS = 3
+        const val HISTORY_TURNS = 6
+        val AFFIRMATIVE = listOf(
+            "sí", "si", "claro", "confirmo", "adelante", "hazlo", "vale", "correcto",
+            "exacto", "eso es", "dale", "ok", "okay", "borra", "bórrala", "borrala",
+        )
+        val NEGATIVE = listOf("no", "déjalo", "dejalo", "cancela", "nada", "para", "espera")
     }
 }
