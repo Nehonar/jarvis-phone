@@ -307,7 +307,12 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 15 (paso 3) | Conversacional: pantalla de conversación (modos hablar/silencio) + menú por voz + acción directa (`IntentCommitter`) | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
 | 16 | Manos libres (asistente del sistema, Opción A) | **Implementada** (device-verified) → [`fase-16-plan.md`](fase-16-plan.md) |
 | 11, 12 | Salud, email RO | — (opcionales, sin priorizar) |
-| 17–22 | **Operator Core**: backend + sync, IA en servidor, cliente web/escritorio, conectores SSH, skills de dev/deploy, CLI | Solo documentado → [`vision-operator-core.md`](vision-operator-core.md) |
+| 17 | Operator Core: backend MVP (auth + context store + sync) | Documentado → [`fase-17-plan.md`](fase-17-plan.md) |
+| 18 | IA en el servidor + framework de skills | Documentado → [`fase-18-plan.md`](fase-18-plan.md) |
+| 19 | Cliente web/escritorio + `:core-contracts` | Documentado → [`fase-19-plan.md`](fase-19-plan.md) |
+| 20 | Conectores de máquina (SSH) con seguridad primero | Documentado → [`fase-20-plan.md`](fase-20-plan.md) |
+| 21 | Skills de dev/deploy ("git pull y despliega") | Documentado → [`fase-21-plan.md`](fase-21-plan.md) |
+| 22 | CLI + endurecimiento de seguridad | Documentado → [`fase-22-plan.md`](fase-22-plan.md) |
 
 Regla de oro: **cada fase termina con una app usable y compilable.**
 
