@@ -35,6 +35,12 @@ class SettingsViewModel @Inject constructor(
     val voiceEnabled: StateFlow<Boolean> = preferences.voiceEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    val wakeWordEnabled: StateFlow<Boolean> = preferences.wakeWordEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val wakePhrase: StateFlow<String> = preferences.wakePhrase
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "operador")
+
     private val _aiState = MutableStateFlow(AiSettingsUiState())
     val aiState: StateFlow<AiSettingsUiState> = _aiState.asStateFlow()
 
@@ -66,6 +72,18 @@ class SettingsViewModel @Inject constructor(
     fun setVoice(enabled: Boolean) {
         viewModelScope.launch {
             preferences.setVoiceEnabled(enabled)
+        }
+    }
+
+    fun setWakeWord(enabled: Boolean) {
+        viewModelScope.launch {
+            preferences.setWakeWordEnabled(enabled)
+        }
+    }
+
+    fun setWakePhrase(phrase: String) {
+        viewModelScope.launch {
+            preferences.setWakePhrase(phrase.trim())
         }
     }
 

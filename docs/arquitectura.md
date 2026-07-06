@@ -306,6 +306,7 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 15 (paso 2) | Conversacional: voz hablada (TTS `Speaker`) + feedback en cada acción + silencio | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
 | 15 (paso 3) | Conversacional: pantalla de conversación (modos hablar/silencio) + menú por voz + acción directa (`IntentCommitter`) | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
 | 16 | Manos libres (asistente del sistema, Opción A) | **Implementada** (device-verified) → [`fase-16-plan.md`](fase-16-plan.md) |
+| 16-bis | Frase de activación en primer plano (escucha continua con la app abierta) | **Implementada** (device-verified) → D-021 |
 | 11, 12 | Salud, email RO | — (opcionales, sin priorizar) |
 | 17 | Operator Core: backend MVP (auth + context store + sync) | Documentado → [`fase-17-plan.md`](fase-17-plan.md) |
 | 18 | IA en el servidor + framework de skills | Documentado → [`fase-18-plan.md`](fase-18-plan.md) |

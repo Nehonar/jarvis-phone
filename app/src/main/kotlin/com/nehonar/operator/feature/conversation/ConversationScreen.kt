@@ -22,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nehonar.operator.core.design.components.BlinkingCursor
 import com.nehonar.operator.core.design.components.ConsolePanel
@@ -81,6 +85,27 @@ fun ConversationScreen(
     // Lanzado desde el asistente del sistema (Fase 16): empieza a escuchar solo.
     LaunchedEffect(autoStartListening) {
         if (autoStartListening) onTalkClick()
+    }
+
+    // Escucha continua por frase de activación (D-021): solo con la pantalla en
+    // primer plano y con permiso de micrófono. Se corta al salir.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    val micGranted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.RECORD_AUDIO,
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (micGranted) viewModel.startHandsFreeIfEnabled()
+                }
+                Lifecycle.Event.ON_PAUSE -> viewModel.stopHandsFree()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val speakMode = state.mode == ConversationMode.SPEAK
@@ -151,14 +176,15 @@ fun ConversationScreen(
                     )
                 }
                 else -> {
-                    if (speakMode) {
-                        OperatorButton(
+                    val wake = state.wake
+                    when {
+                        wake != null -> WakeIndicator(wake)
+                        speakMode -> OperatorButton(
                             text = "HABLAR",
                             onClick = onTalkClick,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                    } else {
-                        TextComposer(onSend = viewModel::sendText)
+                        else -> TextComposer(onSend = viewModel::sendText)
                     }
                 }
             }
@@ -213,6 +239,16 @@ private fun LastOperatorMessage(state: ConversationUiState) {
             ResultCardView(card)
         }
     }
+}
+
+@Composable
+private fun WakeIndicator(wake: WakeState) {
+    val active = wake == WakeState.ACTIVE
+    StatusLine(
+        "ESCUCHA CONTINUA",
+        if (active) "LE ESCUCHO…" else "STANDBY · DI TU FRASE",
+        valueColor = if (active) OperatorColors.Phosphor else OperatorColors.TextDim,
+    )
 }
 
 @Composable

@@ -10,6 +10,7 @@ import com.nehonar.operator.core.ai.PriorMessage
 import com.nehonar.operator.core.ai.ReminderTrigger
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.datastore.VoiceModePreference
+import com.nehonar.operator.core.datastore.WakeWordSettings
 import com.nehonar.operator.core.domain.IntentCommitter
 import com.nehonar.operator.core.domain.model.VoiceNote
 import com.nehonar.operator.core.domain.model.VoiceNoteStatus
@@ -27,15 +28,21 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 enum class ConversationMode { SPEAK, SILENCE }
+
+/** Escucha continua en primer plano: STANDBY vigila la frase; ACTIVE atiende un comando. */
+enum class WakeState { STANDBY, ACTIVE }
 
 enum class Author { USER, OPERATOR }
 
@@ -68,6 +75,8 @@ data class ConversationUiState(
     val turns: List<ConversationTurn> = emptyList(),
     val status: ConversationStatus = ConversationStatus.Idle,
     val mode: ConversationMode = ConversationMode.SPEAK,
+    /** Estado de la escucha continua; null si está desactivada. */
+    val wake: WakeState? = null,
 )
 
 /**
@@ -89,6 +98,7 @@ class ConversationViewModel @Inject constructor(
     private val reminderScheduler: ReminderScheduler,
     private val checklistRepository: ChecklistRepository,
     private val widgetRefresher: WidgetRefresher,
+    private val wakeWordSettings: WakeWordSettings,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConversationUiState())
@@ -98,10 +108,13 @@ class ConversationViewModel @Inject constructor(
     val navigation: Flow<OperatorDestination> = navigationChannel.receiveAsFlow()
 
     private var listenJob: Job? = null
+    private var handsFreeJob: Job? = null
     private var noteId: String? = null
     private var pendingTranscript: String? = null
     private var roundsLeft: Int = MAX_CLARIFICATION_ROUNDS
     private var pendingDelete: DeletableItem? = null
+    private var wakeEnabled = false
+    private var wakePhrase = ""
 
     init {
         viewModelScope.launch {
@@ -110,6 +123,14 @@ class ConversationViewModel @Inject constructor(
                     mode = if (enabled) ConversationMode.SPEAK else ConversationMode.SILENCE,
                 )
             }
+        }
+        viewModelScope.launch {
+            combine(wakeWordSettings.enabled, wakeWordSettings.phrase) { on, phrase -> on to phrase }
+                .collect { (on, phrase) ->
+                    wakeEnabled = on
+                    wakePhrase = phrase
+                    if (!on) stopHandsFree()
+                }
         }
     }
 
@@ -138,6 +159,64 @@ class ConversationViewModel @Inject constructor(
         listenJob?.cancel()
         listenJob = null
         setStatus(ConversationStatus.Idle)
+    }
+
+    /**
+     * Escucha continua en primer plano (llamar al reanudar la pantalla con permiso
+     * de micrófono). En STANDBY solo reacciona a la frase de activación; al oírla
+     * pasa a ACTIVE, atiende un comando y vuelve a STANDBY. Device-only (STT en
+     * bucle); el bucle no se testea, sí la máquina de estados (ver D-021).
+     */
+    fun startHandsFreeIfEnabled() {
+        if (!wakeEnabled || handsFreeJob?.isActive == true) return
+        if (!speechToText.isAvailable()) return
+        beginHandsFreeSession(wakePhrase)
+        handsFreeJob = viewModelScope.launch {
+            while (isActive && wakeEnabled) {
+                var heard: String? = null
+                speechToText.listen().collect { event ->
+                    if (event is SttEvent.FinalResult) heard = event.text
+                }
+                val text = heard?.trim()
+                if (!text.isNullOrEmpty()) handleWakeUtterance(text)
+                if (!wakeEnabled) break
+                delay(HANDS_FREE_PAUSE_MS)
+            }
+            _uiState.value = _uiState.value.copy(wake = null)
+        }
+    }
+
+    fun stopHandsFree() {
+        handsFreeJob?.cancel()
+        handsFreeJob = null
+        _uiState.value = _uiState.value.copy(wake = null)
+    }
+
+    internal fun beginHandsFreeSession(phrase: String) {
+        wakePhrase = phrase
+        _uiState.value = _uiState.value.copy(wake = WakeState.STANDBY)
+    }
+
+    /** Máquina de estados de la escucha por frase de activación (testeable). */
+    internal suspend fun handleWakeUtterance(text: String) {
+        when (_uiState.value.wake) {
+            WakeState.ACTIVE -> {
+                handleUtterance(text)
+                _uiState.value = _uiState.value.copy(wake = WakeState.STANDBY)
+            }
+            WakeState.STANDBY, null -> {
+                val match = WakePhraseMatcher.match(text, wakePhrase) ?: return
+                _uiState.value = _uiState.value.copy(wake = WakeState.ACTIVE)
+                if (match.remainder.isNotBlank()) {
+                    handleUtterance(match.remainder)
+                    _uiState.value = _uiState.value.copy(wake = WakeState.STANDBY)
+                } else {
+                    val reply = "Le escucho, señor."
+                    speaker.speak(reply)
+                    addTurn(Author.OPERATOR, reply)
+                }
+            }
+        }
     }
 
     fun onPermissionDenied() {
@@ -410,6 +489,7 @@ class ConversationViewModel @Inject constructor(
     private companion object {
         const val MAX_CLARIFICATION_ROUNDS = 3
         const val HISTORY_TURNS = 6
+        const val HANDS_FREE_PAUSE_MS = 400L
         val AFFIRMATIVE = listOf(
             "sí", "si", "claro", "confirmo", "adelante", "hazlo", "vale", "correcto",
             "exacto", "eso es", "dale", "ok", "okay", "borra", "bórrala", "borrala",

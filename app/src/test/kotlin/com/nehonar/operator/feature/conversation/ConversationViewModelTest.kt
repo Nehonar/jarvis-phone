@@ -54,6 +54,7 @@ class ConversationViewModelTest {
     private val geofenceScheduler = FakeGeofenceScheduler()
     private val timeProvider = FixedTimeProvider()
     private val voiceMode = FakeVoiceModePreference(initial = true)
+    private val wakeWordSettings = com.nehonar.operator.testing.FakeWakeWordSettings(phraseInitial = "operador")
 
     private val intentCommitter = IntentCommitter(
         parsedIntentRepository = parsedIntentRepository,
@@ -80,6 +81,7 @@ class ConversationViewModelTest {
         reminderScheduler = reminderScheduler,
         checklistRepository = checklistRepository,
         widgetRefresher = widgetRefresher,
+        wakeWordSettings = wakeWordSettings,
     )
 
     @Test
@@ -189,6 +191,81 @@ class ConversationViewModelTest {
 
         assertTrue(vm.uiState.value.status is ConversationStatus.Idle)
         assertEquals("Recordatorio programado, señor.", vm.uiState.value.turns.last().text)
+    }
+
+    @Test
+    fun `en standby la frase de activacion pasa a activo y pide un comando`() = runTest {
+        val vm = viewModel()
+        vm.beginHandsFreeSession("operador")
+
+        vm.handleWakeUtterance("operador")
+
+        assertEquals(WakeState.ACTIVE, vm.uiState.value.wake)
+        assertTrue(speaker.spoken.last().contains("Le escucho"))
+        // No se ha interpretado nada como orden todavía.
+        assertTrue(vm.uiState.value.turns.none { it.author == Author.USER })
+    }
+
+    @Test
+    fun `la frase con orden pegada se ejecuta y vuelve a standby`() = runTest {
+        val aiProvider = FakeAIProvider {
+            AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.SHOPPING,
+                    confidence = 0.8f,
+                    title = "SHOPPING",
+                    summary = it,
+                    actions = listOf(ActionItem(ActionType.BUY, "pan", Priority.MEDIUM)),
+                    assistantResponse = "Anotado, señor.",
+                ),
+            )
+        }
+        val vm = viewModel(aiProvider)
+        vm.beginHandsFreeSession("operador")
+
+        vm.handleWakeUtterance("operador apunta comprar pan")
+
+        // Ejecuta la orden (sin la frase) y vuelve a standby.
+        assertEquals(WakeState.STANDBY, vm.uiState.value.wake)
+        assertEquals("apunta comprar pan", aiProvider.lastTranscript)
+        assertEquals(listOf("pan"), checklistRepository.current.values.map { it.label })
+    }
+
+    @Test
+    fun `en standby ignora lo que no contiene la frase`() = runTest {
+        val aiProvider = FakeAIProvider()
+        val vm = viewModel(aiProvider)
+        vm.beginHandsFreeSession("operador")
+
+        vm.handleWakeUtterance("hola qué tal")
+
+        assertEquals(WakeState.STANDBY, vm.uiState.value.wake)
+        assertEquals(null, aiProvider.lastTranscript)
+        assertTrue(vm.uiState.value.turns.isEmpty())
+    }
+
+    @Test
+    fun `en activo el siguiente enunciado es la orden y vuelve a standby`() = runTest {
+        val aiProvider = FakeAIProvider {
+            AIParseResult.Success(
+                ParsedIntent(
+                    intentType = IntentType.GENERAL_NOTE,
+                    confidence = 0.6f,
+                    title = "NOTE",
+                    summary = it,
+                    assistantResponse = "Anotado, señor.",
+                ),
+            )
+        }
+        val vm = viewModel(aiProvider)
+        vm.beginHandsFreeSession("operador")
+        vm.handleWakeUtterance("operador") // activa
+        assertEquals(WakeState.ACTIVE, vm.uiState.value.wake)
+
+        vm.handleWakeUtterance("guarda una idea")
+
+        assertEquals(WakeState.STANDBY, vm.uiState.value.wake)
+        assertEquals("guarda una idea", aiProvider.lastTranscript)
     }
 
     @Test

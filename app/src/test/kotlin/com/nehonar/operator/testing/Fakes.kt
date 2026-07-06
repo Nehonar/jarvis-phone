@@ -10,6 +10,7 @@ import com.nehonar.operator.core.calendar.CalendarEvent
 import com.nehonar.operator.core.calendar.CalendarRepository
 import com.nehonar.operator.core.common.TimeProvider
 import com.nehonar.operator.core.datastore.VoiceModePreference
+import com.nehonar.operator.core.datastore.WakeWordSettings
 import com.nehonar.operator.core.domain.model.ChecklistItem
 import com.nehonar.operator.core.domain.model.MemoryFact
 import com.nehonar.operator.core.domain.model.PlaceReminder
@@ -363,6 +364,25 @@ class FakeVoiceModePreference(initial: Boolean = true) : VoiceModePreference {
 
     override suspend fun setEnabled(enabled: Boolean) {
         state.value = enabled
+    }
+}
+
+class FakeWakeWordSettings(
+    enabledInitial: Boolean = false,
+    phraseInitial: String = "operador",
+) : WakeWordSettings {
+
+    private val enabledState = MutableStateFlow(enabledInitial)
+    private val phraseState = MutableStateFlow(phraseInitial)
+    override val enabled: Flow<Boolean> = enabledState
+    override val phrase: Flow<String> = phraseState
+
+    override suspend fun setEnabled(enabled: Boolean) {
+        enabledState.value = enabled
+    }
+
+    override suspend fun setPhrase(phrase: String) {
+        phraseState.value = phrase
     }
 }
 

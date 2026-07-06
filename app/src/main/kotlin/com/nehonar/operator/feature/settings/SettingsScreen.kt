@@ -47,6 +47,8 @@ fun SettingsScreen(
 ) {
     val scanlinesEnabled by viewModel.scanlinesEnabled.collectAsStateWithLifecycle()
     val voiceEnabled by viewModel.voiceEnabled.collectAsStateWithLifecycle()
+    val wakeWordEnabled by viewModel.wakeWordEnabled.collectAsStateWithLifecycle()
+    val wakePhrase by viewModel.wakePhrase.collectAsStateWithLifecycle()
     val aiState by viewModel.aiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -149,6 +151,53 @@ fun SettingsScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+
+        Spacer(Modifier.height(16.dp))
+        ConsolePanel(title = "ESCUCHA CONTINUA", modifier = Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "FRASE DE ACTIVACIÓN",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OperatorColors.TextPrimary,
+                    )
+                    Text(
+                        text = "Con la app abierta, dila para que te escuche (no funciona con la app cerrada).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OperatorColors.TextDim,
+                    )
+                }
+                Switch(
+                    checked = wakeWordEnabled,
+                    onCheckedChange = viewModel::setWakeWord,
+                    colors = SwitchDefaults.colors(
+                        checkedTrackColor = OperatorColors.Phosphor,
+                        checkedThumbColor = OperatorColors.Background,
+                        uncheckedTrackColor = OperatorColors.Surface,
+                        uncheckedThumbColor = OperatorColors.TextDim,
+                        uncheckedBorderColor = OperatorColors.GridLine,
+                    ),
+                )
+            }
+            if (wakeWordEnabled) {
+                Spacer(Modifier.height(10.dp))
+                var phraseInput by remember(wakePhrase) { mutableStateOf(wakePhrase) }
+                OutlinedTextField(
+                    value = phraseInput,
+                    onValueChange = { phraseInput = it },
+                    label = { Text("FRASE") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = operatorTextFieldColors(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OperatorButton(
+                    text = "GUARDAR FRASE",
+                    onClick = { viewModel.setWakePhrase(phraseInput) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         Spacer(Modifier.height(16.dp))

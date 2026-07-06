@@ -400,3 +400,33 @@ alojamiento, stack del backend (recomendado Ktor por reutilizar Kotlin), qué
 cliente extra primero y el alcance inicial de las máquinas (sección 8 del doc).
 La identidad sigue siendo Operator (D-009): "más Jarvis" por capacidades, no por
 marca.
+
+## D-021 · Frase de activación en primer plano (escucha continua con la app abierta)
+
+**Fecha:** 2026-07-05 · **Origen:** usuario · **Tipo:** producto / plataforma
+
+El usuario quería, ya que no hay palabra clave siempre-a-la-escucha (limitación de
+Android para apps sideloaded; ver Fase 16), al menos **no tener que pulsar
+"HABLAR"** con la app abierta: definir su **propia frase** que, al oírla, active al
+operador para atender un comando y luego vuelva a standby.
+
+Es **viable en primer plano** y se implementa así:
+
+- Preferencia `WakeWordSettings` (activar + frase configurable, por defecto
+  "operador"), con toggle y campo de texto en Ajustes → "ESCUCHA CONTINUA".
+- `WakePhraseMatcher` (puro, testeable) detecta la frase y devuelve lo que va
+  detrás (para "operador, apunta X" → ejecuta "apunta X" directamente).
+- `ConversationViewModel` mantiene una máquina de estados STANDBY↔ACTIVE:
+  - STANDBY: escucha continua que **solo** reacciona a la frase; lo demás se
+    ignora.
+  - Al oír la frase → ACTIVE + "Le escucho, señor."; si venía una orden pegada, la
+    ejecuta y vuelve a STANDBY; si no, atiende el siguiente enunciado y vuelve.
+- El bucle de escucha continua (STT en bucle) es **device-only** y se ata al ciclo
+  de vida de la pantalla (solo en primer plano, con permiso de micrófono); no se
+  testea en CI. La máquina de estados sí (tests de `handleWakeUtterance` y de
+  `WakePhraseMatcher`).
+
+Límite honesto (igual que Fase 16): **con la app cerrada / pantalla apagada no
+funciona** — eso exige el asistente del sistema. Además, la escucha continua
+consume batería y en algunos móviles el reconocedor tiene rarezas al reiniciarse;
+por eso viene **desactivada por defecto**.
