@@ -306,6 +306,14 @@ El detalle vive en el prompt de producto. Resumen operativo:
 | 15 (paso 2) | Conversacional: voz hablada (TTS `Speaker`) + feedback en cada acción + silencio | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
 | 15 (paso 3) | Conversacional: pantalla de conversación (modos hablar/silencio) + menú por voz + acción directa (`IntentCommitter`) | **Implementada** → [`fase-15-plan.md`](fase-15-plan.md) |
 | 16 | Manos libres (asistente del sistema, Opción A) | **Implementada** (device-verified) → [`fase-16-plan.md`](fase-16-plan.md) |
-| 11, 12, 14 | Salud, email RO, backend | — |
+| 11, 12 | Salud, email RO | — (opcionales, sin priorizar) |
+| 17–22 | **Operator Core**: backend + sync, IA en servidor, cliente web/escritorio, conectores SSH, skills de dev/deploy, CLI | Solo documentado → [`vision-operator-core.md`](vision-operator-core.md) |
 
 Regla de oro: **cada fase termina con una app usable y compilable.**
+
+La antigua "Fase 14 (backend)" se ha ampliado a la **visión Operator Core**
+(fases 17–22): backend central que comparte contexto entre plataformas y opera
+tus máquinas (SSH, git, despliegues) con confirmación y auditoría. Es un cambio
+de rumbo (rompe el local-first) que se detalla, con su seguridad y decisiones
+previas, en [`vision-operator-core.md`](vision-operator-core.md). **Aún sin
+empezar.**

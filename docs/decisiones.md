@@ -374,3 +374,29 @@ Coherente con D-011/D-009: es **solo de dispositivo**, no verificable en CI (que
 solo garantiza compilación y validez de manifest/recursos). El descriptor de
 asistente y el recognitionService varían por versión y fabricante, así que se
 asume **iteración en el dispositivo** para que aparezca y funcione bien.
+
+## D-020 · Rumbo futuro: Operator Core (backend, multiplataforma, control de máquinas)
+
+**Fecha:** 2026-07-05 · **Origen:** usuario · **Tipo:** estrategia · **Estado:** solo documentado
+
+El usuario quiere acercar Operator a un asistente "más tipo Jarvis":
+1. un **backend en un servidor** que comparta contexto entre plataformas,
+2. usarlo **desde cualquier ordenador** (web/escritorio/CLI), aprovechando el
+   esqueleto Android ya hecho, y
+3. que **controle máquinas por SSH**: lanzar comandos, hacer código por un lado y
+   desde la app decir "haz git pull y despliega" para verlo en la plataforma.
+
+Se documenta la ruta completa en [`vision-operator-core.md`](vision-operator-core.md):
+arquitectura objetivo, cómo el esqueleto actual (interfaces de repositorio,
+`AIProvider`, contrato de intención, flujo de confirmación) ya facilita la
+migración, un apartado de **seguridad innegociable** (auto-alojado, secretos
+cifrados fuera del repo, llaves SSH de mínimo privilegio, allowlist de comandos,
+confirmación para mutar/destruir, audit log, kill switch) y un roadmap por fases
+(17–22), con las máquinas al final, detrás de la base y la seguridad.
+
+**No se escribe código todavía.** Es un cambio de rumbo importante: rompe el
+"local-first / los datos no salen del móvil". Antes de empezar hay que decidir
+alojamiento, stack del backend (recomendado Ktor por reutilizar Kotlin), qué
+cliente extra primero y el alcance inicial de las máquinas (sección 8 del doc).
+La identidad sigue siendo Operator (D-009): "más Jarvis" por capacidades, no por
+marca.
