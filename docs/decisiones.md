@@ -412,21 +412,46 @@ operador para atender un comando y luego vuelva a standby.
 
 Es **viable en primer plano** y se implementa así:
 
-- Preferencia `WakeWordSettings` (activar + frase configurable, por defecto
-  "operador"), con toggle y campo de texto en Ajustes → "ESCUCHA CONTINUA".
-- `WakePhraseMatcher` (puro, testeable) detecta la frase y devuelve lo que va
+- Preferencia `WakeWordSettings` (activar + **frase de encender** y **frase de
+  apagar** configurables, por defecto "operador" y "descansa"), con toggle y
+  campos de texto en Ajustes → "ESCUCHA CONTINUA".
+- `WakePhraseMatcher` (puro, testeable) detecta una frase y devuelve lo que va
   detrás (para "operador, apunta X" → ejecuta "apunta X" directamente).
 - `ConversationViewModel` mantiene una máquina de estados STANDBY↔ACTIVE:
-  - STANDBY: escucha continua que **solo** reacciona a la frase; lo demás se
-    ignora.
-  - Al oír la frase → ACTIVE + "Le escucho, señor."; si venía una orden pegada, la
-    ejecuta y vuelve a STANDBY; si no, atiende el siguiente enunciado y vuelve.
+  - STANDBY: escucha continua que **solo** reacciona a la frase de encender; lo
+    demás se ignora.
+  - Al oír la frase de encender → ACTIVE + "Le escucho, señor."; si venía una orden
+    pegada, la ejecuta y **sigue activo**.
+  - ACTIVE: **atiende todas las órdenes seguidas** (no se repite la frase) hasta
+    oír la **frase de apagar** dicha sola, que vuelve a STANDBY.
 - El bucle de escucha continua (STT en bucle) es **device-only** y se ata al ciclo
   de vida de la pantalla (solo en primer plano, con permiso de micrófono); no se
   testea en CI. La máquina de estados sí (tests de `handleWakeUtterance` y de
   `WakePhraseMatcher`).
 
+**Revisión 2026-07-06 (v0.18.1):** el modelo pasó de "una orden por activación" a
+**encender/apagar**. Motivo del usuario: al querer decir varias cosas seguidas,
+solo se atendía la primera y la escucha se apagaba. Ahora, una vez encendida,
+escucha órdenes indefinidamente hasta la frase de apagar. Las frases son
+**configurables y grabables por voz** desde Ajustes (botón GRABAR: STT único que
+guarda lo que se oiga, usando `SettingsViewModel.dictateWakeField`).
+
 Límite honesto (igual que Fase 16): **con la app cerrada / pantalla apagada no
 funciona** — eso exige el asistente del sistema. Además, la escucha continua
 consume batería y en algunos móviles el reconocedor tiene rarezas al reiniciarse;
 por eso viene **desactivada por defecto**.
+
+## D-022 · Pausas al dictar listas (silencio configurable en el reconocedor)
+
+**Fecha:** 2026-07-06 · **Origen:** usuario · **Tipo:** UX / voz
+
+El usuario dictaba "recuérdame comprar: pan, leche, huevos" y solo se anotaba lo
+primero: el `SpeechRecognizer` cerraba la escucha en la primera pausa. Se añaden
+a `AndroidSpeechToText.listen()` los extras de silencio del reconocedor
+(`EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS`,
+`…POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS`, `…MINIMUM_LENGTH_MILLIS`) con valores
+holgados (≈4 s de silencio, mínimo 8 s) para tolerar las pausas entre elementos.
+
+**Honestidad:** son **pistas**; cada motor de voz (Google, Samsung…) las respeta
+en distinta medida y algunos las ignoran, así que no es una garantía dura. Es
+device-only y no se testea en CI (el fake de STT emite eventos directamente).

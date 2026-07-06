@@ -17,6 +17,10 @@ object WakePhraseMatcher {
         val index = lower.indexOf(target)
         if (index < 0) return null
         val after = text.substring((index + target.length).coerceAtMost(text.length))
-        return Match(after.trim().trim('.', ',', '!', '?', ';', ':'))
+        // Quita espacios y puntuación de ambos extremos en una pasada (para
+        // "operador, apunta X" → "apunta X", no " apunta X").
+        return Match(after.trim { it.isWhitespace() || it in PUNCTUATION })
     }
+
+    private val PUNCTUATION = charArrayOf(',', '.', '!', '?', ';', ':').toSet()
 }

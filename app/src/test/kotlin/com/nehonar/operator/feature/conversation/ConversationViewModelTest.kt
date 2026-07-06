@@ -207,7 +207,7 @@ class ConversationViewModelTest {
     }
 
     @Test
-    fun `la frase con orden pegada se ejecuta y vuelve a standby`() = runTest {
+    fun `la frase con orden pegada se ejecuta y sigue activo`() = runTest {
         val aiProvider = FakeAIProvider {
             AIParseResult.Success(
                 ParsedIntent(
@@ -225,8 +225,8 @@ class ConversationViewModelTest {
 
         vm.handleWakeUtterance("operador apunta comprar pan")
 
-        // Ejecuta la orden (sin la frase) y vuelve a standby.
-        assertEquals(WakeState.STANDBY, vm.uiState.value.wake)
+        // Ejecuta la orden (sin la frase) y SIGUE activo para más órdenes.
+        assertEquals(WakeState.ACTIVE, vm.uiState.value.wake)
         assertEquals("apunta comprar pan", aiProvider.lastTranscript)
         assertEquals(listOf("pan"), checklistRepository.current.values.map { it.label })
     }
@@ -245,7 +245,7 @@ class ConversationViewModelTest {
     }
 
     @Test
-    fun `en activo el siguiente enunciado es la orden y vuelve a standby`() = runTest {
+    fun `en activo el siguiente enunciado es la orden y sigue activo`() = runTest {
         val aiProvider = FakeAIProvider {
             AIParseResult.Success(
                 ParsedIntent(
@@ -264,8 +264,25 @@ class ConversationViewModelTest {
 
         vm.handleWakeUtterance("guarda una idea")
 
-        assertEquals(WakeState.STANDBY, vm.uiState.value.wake)
+        // Sigue activo: se pueden encadenar varias órdenes sin repetir la frase.
+        assertEquals(WakeState.ACTIVE, vm.uiState.value.wake)
         assertEquals("guarda una idea", aiProvider.lastTranscript)
+    }
+
+    @Test
+    fun `en activo la frase de fin apaga la escucha y vuelve a standby`() = runTest {
+        val aiProvider = FakeAIProvider()
+        val vm = viewModel(aiProvider)
+        vm.beginHandsFreeSession("operador", endPhrase = "descansa")
+        vm.handleWakeUtterance("operador") // activa
+        assertEquals(WakeState.ACTIVE, vm.uiState.value.wake)
+
+        vm.handleWakeUtterance("descansa")
+
+        // La frase de fin no se interpreta como orden: apaga y vuelve a standby.
+        assertEquals(WakeState.STANDBY, vm.uiState.value.wake)
+        assertEquals(null, aiProvider.lastTranscript)
+        assertTrue(speaker.spoken.last().contains("a la espera"))
     }
 
     @Test

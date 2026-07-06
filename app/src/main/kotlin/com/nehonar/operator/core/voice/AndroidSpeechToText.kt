@@ -76,6 +76,15 @@ class AndroidSpeechToText @Inject constructor(
             )
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            // Deja pausar entre elementos de una lista ("recuérdame comprar: pan,
+            // leche, huevos") sin que el reconocedor corte tras el primero. Son
+            // pistas: cada dispositivo las respeta en distinta medida (ver D-022).
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_COMPLETE_MS)
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
+                SILENCE_POSSIBLY_MS,
+            )
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, MINIMUM_LENGTH_MS)
         }
         recognizer.startListening(intent)
 
@@ -83,6 +92,17 @@ class AndroidSpeechToText @Inject constructor(
             recognizer.destroy()
         }
     }.flowOn(Dispatchers.Main)
+
+    private companion object {
+        // Los extras de silencio del reconocedor se leen como int (ms). Con Long se
+        // ignorarían (getInt daría 0 → corte inmediato), así que son Int a propósito.
+        // Silencio tras el que se da por terminada la frase; largo para tolerar
+        // pausas al enumerar.
+        const val SILENCE_COMPLETE_MS = 4000
+        const val SILENCE_POSSIBLY_MS = 3500
+        // Duración mínima de escucha antes de considerar el final.
+        const val MINIMUM_LENGTH_MS = 8000
+    }
 
     private fun Int.toSttError(): SttError = when (this) {
         SpeechRecognizer.ERROR_NO_MATCH -> SttError.NO_MATCH

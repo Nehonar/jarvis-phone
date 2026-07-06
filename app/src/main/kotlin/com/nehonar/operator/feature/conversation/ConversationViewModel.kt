@@ -115,6 +115,7 @@ class ConversationViewModel @Inject constructor(
     private var pendingDelete: DeletableItem? = null
     private var wakeEnabled = false
     private var wakePhrase = ""
+    private var endPhrase = ""
 
     init {
         viewModelScope.launch {
@@ -125,10 +126,15 @@ class ConversationViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            combine(wakeWordSettings.enabled, wakeWordSettings.phrase) { on, phrase -> on to phrase }
-                .collect { (on, phrase) ->
+            combine(
+                wakeWordSettings.enabled,
+                wakeWordSettings.phrase,
+                wakeWordSettings.endPhrase,
+            ) { on, phrase, end -> Triple(on, phrase, end) }
+                .collect { (on, phrase, end) ->
                     wakeEnabled = on
                     wakePhrase = phrase
+                    endPhrase = end
                     if (!on) stopHandsFree()
                 }
         }
@@ -163,9 +169,10 @@ class ConversationViewModel @Inject constructor(
 
     /**
      * Escucha continua en primer plano (llamar al reanudar la pantalla con permiso
-     * de micrófono). En STANDBY solo reacciona a la frase de activación; al oírla
-     * pasa a ACTIVE, atiende un comando y vuelve a STANDBY. Device-only (STT en
-     * bucle); el bucle no se testea, sí la máquina de estados (ver D-021).
+     * de micrófono). En STANDBY solo reacciona a la frase de encendido; al oírla
+     * pasa a ACTIVE y ATIENDE VARIAS ÓRDENES seguidas hasta que se oye la frase de
+     * apagado, que vuelve a STANDBY. Device-only (STT en bucle); el bucle no se
+     * testea, sí la máquina de estados (ver D-021).
      */
     fun startHandsFreeIfEnabled() {
         if (!wakeEnabled || handsFreeJob?.isActive == true) return
@@ -192,24 +199,35 @@ class ConversationViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(wake = null)
     }
 
-    internal fun beginHandsFreeSession(phrase: String) {
+    internal fun beginHandsFreeSession(phrase: String, endPhrase: String = this.endPhrase) {
         wakePhrase = phrase
+        this.endPhrase = endPhrase
         _uiState.value = _uiState.value.copy(wake = WakeState.STANDBY)
     }
 
-    /** Máquina de estados de la escucha por frase de activación (testeable). */
+    /**
+     * Máquina de estados de la escucha continua (testeable): STANDBY espera la frase
+     * de encendido; una vez ACTIVE atiende TODO lo que se diga como orden, hasta que
+     * se oye la frase de apagado (vuelve a STANDBY).
+     */
     internal suspend fun handleWakeUtterance(text: String) {
         when (_uiState.value.wake) {
             WakeState.ACTIVE -> {
-                handleUtterance(text)
-                _uiState.value = _uiState.value.copy(wake = WakeState.STANDBY)
+                if (matchesEndPhrase(text)) {
+                    _uiState.value = _uiState.value.copy(wake = WakeState.STANDBY)
+                    val reply = "A la orden, señor. Quedo a la espera."
+                    speaker.speak(reply)
+                    addTurn(Author.OPERATOR, reply)
+                } else {
+                    // Sigue ACTIVE tras la orden: se pueden dar varias seguidas.
+                    handleUtterance(text)
+                }
             }
             WakeState.STANDBY, null -> {
                 val match = WakePhraseMatcher.match(text, wakePhrase) ?: return
                 _uiState.value = _uiState.value.copy(wake = WakeState.ACTIVE)
                 if (match.remainder.isNotBlank()) {
                     handleUtterance(match.remainder)
-                    _uiState.value = _uiState.value.copy(wake = WakeState.STANDBY)
                 } else {
                     val reply = "Le escucho, señor."
                     speaker.speak(reply)
@@ -217,6 +235,13 @@ class ConversationViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** La frase de apagado se reconoce si el enunciado es solo esa frase (sin orden). */
+    private fun matchesEndPhrase(text: String): Boolean {
+        if (endPhrase.isBlank()) return false
+        val match = WakePhraseMatcher.match(text, endPhrase) ?: return false
+        return match.remainder.isBlank()
     }
 
     fun onPermissionDenied() {

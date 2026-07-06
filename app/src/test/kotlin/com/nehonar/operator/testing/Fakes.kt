@@ -370,12 +370,15 @@ class FakeVoiceModePreference(initial: Boolean = true) : VoiceModePreference {
 class FakeWakeWordSettings(
     enabledInitial: Boolean = false,
     phraseInitial: String = "operador",
+    endPhraseInitial: String = "descansa",
 ) : WakeWordSettings {
 
     private val enabledState = MutableStateFlow(enabledInitial)
     private val phraseState = MutableStateFlow(phraseInitial)
+    private val endPhraseState = MutableStateFlow(endPhraseInitial)
     override val enabled: Flow<Boolean> = enabledState
     override val phrase: Flow<String> = phraseState
+    override val endPhrase: Flow<String> = endPhraseState
 
     override suspend fun setEnabled(enabled: Boolean) {
         enabledState.value = enabled
@@ -383,6 +386,10 @@ class FakeWakeWordSettings(
 
     override suspend fun setPhrase(phrase: String) {
         phraseState.value = phrase
+    }
+
+    override suspend fun setEndPhrase(phrase: String) {
+        endPhraseState.value = phrase
     }
 }
 

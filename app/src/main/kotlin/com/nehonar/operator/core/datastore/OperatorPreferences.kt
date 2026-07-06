@@ -39,12 +39,20 @@ class OperatorPreferences @Inject constructor(
         dataStore.edit { prefs -> prefs[KEY_WAKE_ENABLED] = enabled }
     }
 
-    /** Frase que activa al operador cuando la escucha continua está encendida. */
+    /** Frase que ENCIENDE la escucha continua (pasa a activo y atiende varias órdenes). */
     val wakePhrase: Flow<String> =
         dataStore.data.map { prefs -> prefs[KEY_WAKE_PHRASE] ?: DEFAULT_WAKE_PHRASE }
 
     suspend fun setWakePhrase(phrase: String) {
         dataStore.edit { prefs -> prefs[KEY_WAKE_PHRASE] = phrase }
+    }
+
+    /** Frase que APAGA la escucha continua (vuelve a standby). */
+    val wakeEndPhrase: Flow<String> =
+        dataStore.data.map { prefs -> prefs[KEY_WAKE_END_PHRASE] ?: DEFAULT_WAKE_END_PHRASE }
+
+    suspend fun setWakeEndPhrase(phrase: String) {
+        dataStore.edit { prefs -> prefs[KEY_WAKE_END_PHRASE] = phrase }
     }
 
     val aiProviderType: Flow<AIProviderType> = dataStore.data.map { prefs ->
@@ -69,10 +77,12 @@ class OperatorPreferences @Inject constructor(
 
     private companion object {
         const val DEFAULT_WAKE_PHRASE = "operador"
+        const val DEFAULT_WAKE_END_PHRASE = "descansa"
         val KEY_SCANLINES = booleanPreferencesKey("scanlines_enabled")
         val KEY_VOICE = booleanPreferencesKey("voice_enabled")
         val KEY_WAKE_ENABLED = booleanPreferencesKey("wake_word_enabled")
         val KEY_WAKE_PHRASE = stringPreferencesKey("wake_phrase")
+        val KEY_WAKE_END_PHRASE = stringPreferencesKey("wake_end_phrase")
         val KEY_AI_PROVIDER = stringPreferencesKey("ai_provider_type")
     }
 }

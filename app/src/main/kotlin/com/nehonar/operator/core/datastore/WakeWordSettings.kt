@@ -11,9 +11,13 @@ import kotlinx.coroutines.flow.Flow
  */
 interface WakeWordSettings {
     val enabled: Flow<Boolean>
+    /** Frase que enciende la escucha continua (pasa a activo). */
     val phrase: Flow<String>
+    /** Frase que la apaga (vuelve a standby). */
+    val endPhrase: Flow<String>
     suspend fun setEnabled(enabled: Boolean)
     suspend fun setPhrase(phrase: String)
+    suspend fun setEndPhrase(phrase: String)
 }
 
 @Singleton
@@ -22,6 +26,8 @@ class OperatorWakeWordSettings @Inject constructor(
 ) : WakeWordSettings {
     override val enabled: Flow<Boolean> = preferences.wakeWordEnabled
     override val phrase: Flow<String> = preferences.wakePhrase
+    override val endPhrase: Flow<String> = preferences.wakeEndPhrase
     override suspend fun setEnabled(enabled: Boolean) = preferences.setWakeWordEnabled(enabled)
     override suspend fun setPhrase(phrase: String) = preferences.setWakePhrase(phrase.trim())
+    override suspend fun setEndPhrase(phrase: String) = preferences.setWakeEndPhrase(phrase.trim())
 }

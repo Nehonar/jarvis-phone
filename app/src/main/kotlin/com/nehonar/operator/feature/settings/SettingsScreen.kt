@@ -49,6 +49,8 @@ fun SettingsScreen(
     val voiceEnabled by viewModel.voiceEnabled.collectAsStateWithLifecycle()
     val wakeWordEnabled by viewModel.wakeWordEnabled.collectAsStateWithLifecycle()
     val wakePhrase by viewModel.wakePhrase.collectAsStateWithLifecycle()
+    val wakeEndPhrase by viewModel.wakeEndPhrase.collectAsStateWithLifecycle()
+    val wakeDictation by viewModel.wakeDictation.collectAsStateWithLifecycle()
     val aiState by viewModel.aiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -158,12 +160,13 @@ fun SettingsScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = "FRASE DE ACTIVACIÓN",
+                        text = "ENCENDER / APAGAR POR VOZ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = OperatorColors.TextPrimary,
                     )
                     Text(
-                        text = "Con la app abierta, dila para que te escuche (no funciona con la app cerrada).",
+                        text = "Con la app abierta, di la frase de encender y te escuchará varias " +
+                            "órdenes seguidas hasta que digas la de apagar (no funciona cerrada).",
                         style = MaterialTheme.typography.bodySmall,
                         color = OperatorColors.TextDim,
                     )
@@ -181,22 +184,36 @@ fun SettingsScreen(
                 )
             }
             if (wakeWordEnabled) {
-                Spacer(Modifier.height(10.dp))
-                var phraseInput by remember(wakePhrase) { mutableStateOf(wakePhrase) }
-                OutlinedTextField(
-                    value = phraseInput,
-                    onValueChange = { phraseInput = it },
-                    label = { Text("FRASE") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = operatorTextFieldColors(),
+                Spacer(Modifier.height(12.dp))
+                WakePhraseField(
+                    caption = "FRASE PARA ENCENDER",
+                    saved = wakePhrase,
+                    recording = wakeDictation.field == WakeField.START,
+                    partial = wakeDictation.partial,
+                    onSave = viewModel::setWakePhrase,
+                    onRecord = { viewModel.dictateWakeField(WakeField.START) },
+                    onCancelRecord = viewModel::cancelDictation,
                 )
-                Spacer(Modifier.height(8.dp))
-                OperatorButton(
-                    text = "GUARDAR FRASE",
-                    onClick = { viewModel.setWakePhrase(phraseInput) },
-                    modifier = Modifier.fillMaxWidth(),
+
+                Spacer(Modifier.height(14.dp))
+                WakePhraseField(
+                    caption = "FRASE PARA APAGAR",
+                    saved = wakeEndPhrase,
+                    recording = wakeDictation.field == WakeField.END,
+                    partial = wakeDictation.partial,
+                    onSave = viewModel::setWakeEndPhrase,
+                    onRecord = { viewModel.dictateWakeField(WakeField.END) },
+                    onCancelRecord = viewModel::cancelDictation,
                 )
+
+                wakeDictation.message?.let { message ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OperatorColors.Cyan,
+                    )
+                }
             }
         }
 
@@ -304,6 +321,71 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth(),
             accent = OperatorColors.TextDim,
         )
+    }
+}
+
+/**
+ * Campo de una frase de la escucha continua: se puede teclear y GUARDAR, o GRABAR
+ * por voz (mientras graba muestra el parcial y deja CANCELAR).
+ */
+@Composable
+private fun WakePhraseField(
+    caption: String,
+    saved: String,
+    recording: Boolean,
+    partial: String,
+    onSave: (String) -> Unit,
+    onRecord: () -> Unit,
+    onCancelRecord: () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            text = caption,
+            style = MaterialTheme.typography.bodyMedium,
+            color = OperatorColors.TextPrimary,
+        )
+        Spacer(Modifier.height(6.dp))
+        var input by remember(saved) { mutableStateOf(saved) }
+        OutlinedTextField(
+            value = if (recording && partial.isNotEmpty()) partial else input,
+            onValueChange = { input = it },
+            enabled = !recording,
+            label = { Text("FRASE") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = operatorTextFieldColors(),
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OperatorButton(
+                text = "GUARDAR",
+                onClick = { onSave(input) },
+                modifier = Modifier.weight(1f),
+            )
+            if (recording) {
+                OperatorButton(
+                    text = "CANCELAR",
+                    onClick = onCancelRecord,
+                    modifier = Modifier.weight(1f),
+                    accent = OperatorColors.Danger,
+                )
+            } else {
+                OperatorButton(
+                    text = "GRABAR",
+                    onClick = onRecord,
+                    modifier = Modifier.weight(1f),
+                    accent = OperatorColors.Cyan,
+                )
+            }
+        }
+        if (recording) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "GRABANDO… DI LA FRASE",
+                style = MaterialTheme.typography.bodySmall,
+                color = OperatorColors.Warning,
+            )
+        }
     }
 }
 
